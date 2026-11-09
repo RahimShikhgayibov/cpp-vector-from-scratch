@@ -88,8 +88,10 @@ TEST_CASE("reserve: no reallocation while size stays below capacity") {
         v.push_back(Tracked(i));
     }
     CHECK(v.capacity() == 10);
-    // 10 müvəqqəti arqument + 10 kopya vektora. Köçürmə olsaydı, kopya çox olardı.
-    CHECK(Tracked::copies == 10);
+    // Hər push_back müvəqqəti arqumenti vektora bir dəfə köçürür (A5: push_back(T&&)).
+    // Buffer dəyişsəydi, köhnə elementlər də köçürülərdi və say 10-dan çox olardı.
+    CHECK(Tracked::moves == 10);
+    CHECK(Tracked::copies == 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -191,36 +193,55 @@ TEST_CASE("push_back(v.back()) many times with growth") {
 
 // ---------------------------------------------------------------------------
 // Exception safety: kopyalama uğursuz olsa, sızma yoxdur və vektor dəyişmir
+//
+// Böyümə zamanı köhnə elementlər yalnız move constructor noexcept DEYİLSƏ
+// kopyalanır (std::move_if_noexcept). Ona görə böyümə testlərində
+// TrackedThrowingMove istifadə olunur: onun köçürülməsi exception ata bilər
+// deyə vektor kopyalamağı seçir, kopyalama isə bizim proqramladığımız anda atır.
 // ---------------------------------------------------------------------------
 
-TEST_CASE("exception in push_back during growth: vector is unchanged") {
-    Tracked::reset();
-    {
-        mystl::vector<Tracked> v = make_tracked(4);
-        REQUIRE(v.size() == v.capacity());   // növbəti push_back böyüdəcək
-        const int live_before = Tracked::live();
+using test::TrackedThrowingMove;
 
-        // push_back: 1) yeni elementin kopyası, 2) v[0], 3) v[1] -> exception
-        Tracked::throw_on_copy_after = 2;
-        CHECK_THROWS_AS(v.push_back(Tracked(99)), std::runtime_error);
-        Tracked::throw_on_copy_after = -1;
+namespace {
+mystl::vector<TrackedThrowingMove> make_throwing_move(int n) {
+    mystl::vector<TrackedThrowingMove> v;
+    for (int i = 0; i < n; ++i) {
+        v.push_back(TrackedThrowingMove(i));
+    }
+    return v;
+}
+}  // namespace
+
+TEST_CASE("exception in push_back during growth: vector is unchanged") {
+    TrackedThrowingMove::reset();
+    {
+        auto v = make_throwing_move(4);
+        REQUIRE(v.size() == v.capacity());   // növbəti push_back böyüdəcək
+        const int live_before = TrackedThrowingMove::live();
+
+        // push_back(rvalue): yeni element KÖÇÜRÜLÜR (kopya sayılmır),
+        // sonra köhnələr KOPYALANIR: v[0] uğurlu, v[1] -> exception
+        TrackedThrowingMove::throw_on_copy_after = 1;
+        CHECK_THROWS_AS(v.push_back(TrackedThrowingMove(99)), std::runtime_error);
+        TrackedThrowingMove::throw_on_copy_after = -1;
 
         CHECK(v.size() == 4);
         CHECK(v.capacity() == 4);
         for (int i = 0; i < 4; ++i) {
-            CHECK(v[static_cast<std::size_t>(i)].value == i);
+            CHECK(v[static_cast<std::size_t>(i)].value == i);  // heç biri "boşaldılmayıb"
         }
-        CHECK(Tracked::live() == live_before);  // yarımçıq qurulanlar dağıdılıb
+        CHECK(TrackedThrowingMove::live() == live_before);  // yarımçıq qurulanlar dağıdılıb
     }
-    CHECK(Tracked::live() == 0);
+    CHECK(TrackedThrowingMove::live() == 0);
 }
 
 TEST_CASE("exception in push_back while copying the new element itself") {
     Tracked::reset();
     {
         mystl::vector<Tracked> v = make_tracked(2);
-        Tracked::throw_on_copy_after = 0;  // ilk kopya: yeni elementin özü
-        CHECK_THROWS_AS(v.push_back(Tracked(5)), std::runtime_error);
+        const Tracked item(5);
+        Tracked::throw_on_copy_after = 0;  // ilk kopya: yeni elementin özü (lvalue)
+        CHECK_THROWS_AS(v.push_back(item), std::runtime_error);
         Tracked::throw_on_copy_after = -1;
         CHECK(v.size() == 2);
     }
@@ -228,19 +249,21 @@ TEST_CASE("exception in push_back while copying the new element itself") {
 }
 
 TEST_CASE("exception in reserve: vector is unchanged") {
-    Tracked::reset();
+    TrackedThrowingMove::reset();
     {
-        mystl::vector<Tracked> v = make_tracked(5);
+        auto v = make_throwing_move(5);
         const std::size_t cap = v.capacity();
-        Tracked::throw_on_copy_after = 3;
+        TrackedThrowingMove::throw_on_copy_after = 3;
         CHECK_THROWS_AS(v.reserve(100), std::runtime_error);
-        Tracked::throw_on_copy_after = -1;
+        TrackedThrowingMove::throw_on_copy_after = -1;
 
         CHECK(v.capacity() == cap);
         REQUIRE(v.size() == 5);
-        CHECK(v[4].value == 4);
+        for (int i = 0; i < 5; ++i) {
+            CHECK(v[static_cast<std::size_t>(i)].value == i);
+        }
     }
-    CHECK(Tracked::live() == 0);
+    CHECK(TrackedThrowingMove::live() == 0);
 }
 
 TEST_CASE("exception in copy constructor: nothing leaks") {

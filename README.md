@@ -12,7 +12,7 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | A2 | v2: kopyalama, rule of three | ✅ |
 | A3 | v3: template `mystl::vector<T>` | ✅ |
 | A4 | v4: xam yaddaş, placement new | ✅ |
-| A5 | v5: move semantics, rule of five | ⏳ |
+| A5 | v5: move semantics, rule of five | ✅ |
 | B | Tam interfeys | ⏳ |
 | C | Testlər, differential test, sanitizer-lər | ⏳ |
 | D | Benchmark və 7 tədqiqat sualı | ⏳ |
@@ -50,3 +50,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [A2: kopyalama və rule of three](docs/izah/03-a2-rule-of-three.md)
 - [A3: template](docs/izah/04-a3-template.md)
 - [A4: xam yaddaş və placement new](docs/izah/05-a4-xam-yaddas.md)
+- [A5: move semantics və rule of five](docs/izah/06-a5-move-semantics.md)

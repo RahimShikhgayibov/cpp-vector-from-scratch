@@ -46,6 +46,7 @@ add_executable(tests
   tests/test_vector.cpp
   tests/test_vector_copy.cpp
   tests/test_vector_lifetime.cpp
+  tests/test_vector_move.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
@@ -60,3 +61,6 @@ target_link_libraries(a2_shallow_copy PRIVATE mystl_warnings mystl_sanitizers)
 
 add_executable(a4_raw_memory experiments/a4_raw_memory.cpp)
 target_link_libraries(a4_raw_memory PRIVATE mystl mystl_warnings mystl_sanitizers)
+
+add_executable(a5_move_semantics experiments/a5_move_semantics.cpp)
+target_link_libraries(a5_move_semantics PRIVATE mystl mystl_warnings mystl_sanitizers)
