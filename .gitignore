@@ -1,0 +1,15 @@
+# Build qovluqları
+build/
+out/
+
+# Kompilyasiya nəticələri
+*.exe
+*.o
+*.obj
+
+# Benchmark nəticələri (skriptlər yenidən yaradır)
+bench/results/
+
+# Redaktor
+.vscode/
+.idea/
