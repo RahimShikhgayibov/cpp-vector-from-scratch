@@ -2,6 +2,17 @@
 
 C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər və benchmark ilə yoxlanılır.
 
+```cpp
+#include <mystl/vector.hpp>
+
+mystl::vector<std::string> v{"b", "c"};
+v.insert(v.begin(), "a");
+v.emplace_back(3, 'x');                    // "xxx", birbaşa yerində qurulur
+mystl::erase_if(v, [](const auto& s) { return s.size() > 2; });
+
+mystl::vector<int, mystl::growth::one_and_half> w;   // 1.5× böyümə siyasəti
+```
+
 ## Vəziyyət
 
 | Faza | Addım | Vəziyyət |
@@ -18,16 +29,54 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | B3 | Tutum: `resize`, `shrink_to_fit`, `max_size` | ✅ |
 | B4 | Modifikatorlar: `emplace`, `insert`, `erase` | ✅ |
 | B5 | Müqayisə operatorları, `swap(a, b)` | ✅ |
-| B6 | Growth policy, iterator invalidation cədvəli | ⏳ |
+| B6 | Growth policy, iterator invalidation cədvəli | ✅ |
 | C | Testlər, differential test, sanitizer-lər | ⏳ |
 | D | Benchmark və 7 tədqiqat sualı | ⏳ |
+
+## İnterfeys
+
+`std::vector`-un interfeysi tam dəstəklənir, yalnız **custom allocator** və **`vector<bool>`** ixtisaslaşması bilərəkdən əhatə xaricindədir.
+
+| Qrup | Metodlar |
+|---|---|
+| Constructor-lar | default, `(n)`, `(n, value)`, `(first, last)`, `({...})`, copy, move |
+| Mənimsəmə | `operator=` (copy, move, `{...}`), `assign` |
+| Giriş | `at`, `operator[]`, `front`, `back`, `data` |
+| Iterator-lar | `begin`/`end`, `cbegin`/`cend`, `rbegin`/`rend`, `crbegin`/`crend` |
+| Tutum | `empty`, `size`, `max_size`, `reserve`, `capacity`, `shrink_to_fit` |
+| Modifikatorlar | `clear`, `insert`, `emplace`, `erase`, `push_back`, `emplace_back`, `pop_back`, `resize`, `swap` |
+| Sərbəst | `==`, `<=>` (`!=`, `<`, `<=`, `>`, `>=`), `swap(a, b)`, `mystl::erase`, `mystl::erase_if` |
+| Əlavə | böyümə siyasəti (`growth::doubling`, `growth::one_and_half`), CTAD |
+
+**Exception safety:** `push_back`, `emplace_back`, `reserve`, `resize`, `shrink_to_fit`, sona `insert`, copy assignment və `assign` **strong guarantee** verir (exception olsa, vektor dəyişmir). Ortaya `insert`/`erase` **basic guarantee** verir (`std::vector` kimi).
+
+## Iterator invalidation
+
+Iterator, pointer və reference elementin yaddaş ünvanıdır. Element yerini dəyişəndə və ya buffer silinəndə onlar **etibarsız** olur, onlardan istifadə isə undefined behavior-dur.
+
+**Yenidən ayırma** (`size() == capacity()` olanda əlavə etmək) **bütün** iterator-ları etibarsız edir. `reserve` ilə əvvəlcədən yer ayırmaq bunun qarşısını alır.
+
+| Əməliyyat | Etibarsız olanlar |
+|---|---|
+| `push_back`, `emplace_back` | yenidən ayırma olsa: **hamısı**; olmasa: yalnız `end()` |
+| `insert`, `emplace` | yenidən ayırma olsa: **hamısı**; olmasa: `pos` və ondan sonrakılar (o cümlədən `end()`) |
+| `erase` | silinən mövqe və ondan sonrakılar (o cümlədən `end()`) |
+| `pop_back` | son element və `end()` |
+| `resize` | böyümədə `push_back` kimi; kiçilmədə silinənlər və `end()` |
+| `clear` | **hamısı** |
+| `reserve` | capacity artarsa: **hamısı**; artmazsa: heç biri |
+| `shrink_to_fit` | capacity dəyişərsə: **hamısı** |
+| `assign`, `operator=` | **hamısı** (bizim versiya həmişə yeni buffer ayırır) |
+| `swap` | heç biri, amma iterator-lar artıq **digər** vektorun elementlərini göstərir |
+| move constructor / move assignment | mənbənin iterator-ları etibarlı qalır və artıq hədəf vektorun elementlərini göstərir |
+| `at`, `[]`, `front`, `back`, `data`, `size`, ... | heç biri |
 
 ## Struktur
 
 ```
-include/mystl/   kitabxana (header-only)
+include/mystl/   kitabxana (header-only): vector.hpp
 tests/           doctest testləri
-experiments/     Faza A təcrübələri
+experiments/     Faza A təcrübələri (Noisy, double free, xam yaddaş, noexcept)
 bench/           benchmark-lar
 scripts/         qrafik skriptləri (Python)
 docs/izah/       hər addımın ətraflı izahı
@@ -61,3 +110,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [B3: tutum](docs/izah/09-b3-tutum.md)
 - [B4: modifikatorlar](docs/izah/10-b4-modifikatorlar.md)
 - [B5: müqayisə və ümumi funksiyalar](docs/izah/11-b5-muqayise.md)
+- [B6: peşəkar səviyyə](docs/izah/12-b6-pesekar-seviyye.md)

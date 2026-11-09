@@ -42,6 +42,34 @@ inline constexpr synth_three_way_t synth_three_way{};
 
 }  // namespace detail
 
+// --- B6: Böyümə siyasəti (growth policy) ---------------------------------------
+//
+// Vektor dolanda capacity-nin neçə dəfə artacağını təyin edir. Benchmark
+// (Faza D, sual 2) üçün iki siyasət müqayisə olunur.
+//
+// Tələb: next(c) > c olmalıdır (c >= 1 üçün) və c-yə mütənasib böyüməlidir
+// (həndəsi böyümə). Yoxsa push_back amortized O(1) olmaz.
+namespace growth {
+
+// 2×: libstdc++ (GCC) və libc++ (Clang) belə edir.
+struct doubling {
+    static constexpr std::size_t next(std::size_t capacity) noexcept { return capacity * 2; }
+};
+
+// 1.5×: MSVC və Facebook folly belə edir. Daha az boş yer, daha çox köçürmə.
+struct one_and_half {
+    static constexpr std::size_t next(std::size_t capacity) noexcept {
+        return capacity + capacity / 2;
+    }
+};
+
+}  // namespace growth
+
+template <typename P>
+concept growth_policy = requires(std::size_t capacity) {
+    { P::next(capacity) } -> std::convertible_to<std::size_t>;
+};
+
 // istənilən T üçün dinamik massiv (std::vector-un analoqu, allocator və
 // vector<bool> xaric). Yaddaş və obyektlər ayrı idarə olunur,
 // elementlər mümkün olanda KÖÇÜRÜLÜR (move), kopyalanmır.
@@ -63,9 +91,13 @@ inline constexpr synth_three_way_t synth_three_way{};
 // T-dən tələb olunan: destructor və (copy VƏ YA move) constructor.
 // Yalnız köçürülə bilən tiplər də işləyir (məs. std::unique_ptr), sadəcə
 // vector-un özü onda kopyalana bilməz.
-template <typename T>
+//
+// Growth: böyümə siyasəti, default 2×. mystl::vector<int> yazmaq kifayətdir;
+// benchmark üçün mystl::vector<int, mystl::growth::one_and_half>.
+template <typename T, growth_policy Growth = growth::doubling>
 class vector {
 public:
+    using growth_type = Growth;
     using value_type = T;
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
@@ -572,16 +604,18 @@ private:
     }
 
     // Ən azı `required` elementə yer lazımdır: yeni capacity nə olsun?
-    // Həndəsi böyümə (2×), amma tələb olunandan az yox və max_size()-dan çox yox.
+    // Growth siyasəti ilə həndəsi böyümə, amma tələb olunandan az yox və
+    // max_size()-dan çox yox.
     size_type recommend_capacity(size_type required) const {
         const size_type max = max_size();
         if (required > max) {
             throw std::length_error("mystl::vector: size would exceed max_size()");
         }
         if (capacity_ >= max / 2) {
-            return max;   // 2× daşardı
+            return max;   // böyümə max_size()-ı aşardı (və ya size_t daşardı)
         }
-        return std::max(capacity_ * 2, required);
+        const size_type grown = static_cast<size_type>(Growth::next(capacity_));
+        return std::max(std::min(grown, max), required);
     }
 
     // --- Köçürmə (relocation) -----------------------------------------------
@@ -677,18 +711,18 @@ vector(InputIt, InputIt) -> vector<std::iter_value_t<InputIt>>;
 //   mystl::erase(v, 0);                                  // bütün 0-ları sil
 //   mystl::erase_if(v, [](int x) { return x < 0; });     // mənfiləri sil
 
-template <typename T, typename U>
-typename vector<T>::size_type erase(vector<T>& v, const U& value) {
+template <typename T, typename G, typename U>
+typename vector<T, G>::size_type erase(vector<T, G>& v, const U& value) {
     const auto new_end = std::remove(v.begin(), v.end(), value);
-    const auto removed = static_cast<typename vector<T>::size_type>(v.end() - new_end);
+    const auto removed = static_cast<typename vector<T, G>::size_type>(v.end() - new_end);
     v.erase(new_end, v.end());
     return removed;
 }
 
-template <typename T, typename Pred>
-typename vector<T>::size_type erase_if(vector<T>& v, Pred pred) {
+template <typename T, typename G, typename Pred>
+typename vector<T, G>::size_type erase_if(vector<T, G>& v, Pred pred) {
     const auto new_end = std::remove_if(v.begin(), v.end(), pred);
-    const auto removed = static_cast<typename vector<T>::size_type>(v.end() - new_end);
+    const auto removed = static_cast<typename vector<T, G>::size_type>(v.end() - new_end);
     v.erase(new_end, v.end());
     return removed;
 }

@@ -121,7 +121,11 @@ capacity: 1 → 2 → 4 → 8 → ... → 2^k
 köçürülən: 1 + 2 + 4 + ... + 2^(k-1) = 2^k − 1 < n
 ```
 
-Yəni **n əməliyyatda cəmi n-dən az köçürmə** var. Bütün yazmalarla birlikdə ümumi iş təxminən `2n`-dir. Əməliyyat başına bu, sabitdir: **amortized O(1)**.
+Yəni `n` 2-nin qüvvəti olanda **n əməliyyatda cəmi n-dən az köçürmə** var.
+
+**İstənilən n üçün:** son capacity `C` `2n`-dən kiçikdir (`n`-dən böyük olan ilk 2-nin qüvvəti), köçürmələr isə `C/2 + C/4 + ... + 1 < C`. Deməli, köçürmələr **həmişə `2n`-dən azdır**. Ən pis hal `n`-in 2-nin qüvvətindən bir az böyük olmasıdır: məsələn, `n = 10 000` üçün `C = 16 384` və köçürmələr `16 383`-dür. Bu ədəd B6-da sayğac ilə ölçülüb.
+
+Bütün yazmalarla birlikdə ümumi iş `3n`-dən azdır. Əməliyyat başına bu, sabitdir: **amortized O(1)**.
 
 **"Amortized" nə deməkdir?** Ayrı-ayrı `push_back`-lərin bəziləri bahalıdır: grow olanda O(n). Amma bahalı olanlar o qədər seyrəkdir ki, **ortalama** bir əməliyyat O(1) olur. Hər `push_back` O(1) deyil, uzun ardıcıllığın orta qiyməti O(1)-dir.
 
@@ -164,7 +168,7 @@ Riyazi isbat (aggregate və ya accounting metodu) hesabatda olmalıdır: Cormen,
 
 **`size` və `capacity`-nin fərqi nədir?** `size` saxlanan elementlərin sayıdır, `capacity` ayrılmış yerin həcmidir. Həmişə `size <= capacity`.
 
-**Amortized O(1) nə deməkdir və niyə hər `push_back` O(1) deyil?** Grow olanda bütün elementlər köçürülür, bu O(n)-dir. Amma 2× böyümədə n əməliyyatda cəmi köçürmə n-dən azdır. Ortalama əməliyyat başına sabit iş düşür.
+**Amortized O(1) nə deməkdir və niyə hər `push_back` O(1) deyil?** Grow olanda bütün elementlər köçürülür, bu O(n)-dir. Amma 2× böyümədə n əməliyyatda cəmi köçürmə `2n`-dən azdır (`n` 2-nin qüvvəti olanda hətta `n`-dən az). Ortalama əməliyyat başına sabit iş düşür.
 
 **Capacity-ni niyə 2 dəfə artırırıq, 1-1 artırsaq nə olar?** 1-1 artanda hər push_back köçürmə edir və ümumi iş O(n²) olur. Həndəsi artım isə O(n) verir.
 
