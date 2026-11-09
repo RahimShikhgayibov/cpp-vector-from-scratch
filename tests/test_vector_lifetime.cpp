@@ -321,6 +321,8 @@ TEST_CASE("over-aligned type gets correctly aligned storage") {
 TEST_CASE("allocation size overflow is detected") {
     mystl::vector<CacheLine> v;  // sizeof(CacheLine) == 64
     const std::size_t too_many = static_cast<std::size_t>(-1) / 64 + 1;
-    CHECK_THROWS_AS(v.reserve(too_many), std::bad_array_new_length);
+    // B3-dən etibarən reserve max_size()-ı yoxlayır və std::vector kimi
+    // std::length_error atır (A4-də bad_array_new_length idi).
+    CHECK_THROWS_AS(v.reserve(too_many), std::length_error);
     CHECK(v.capacity() == 0);
 }

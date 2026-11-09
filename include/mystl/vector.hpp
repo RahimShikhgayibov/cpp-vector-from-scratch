@@ -1,12 +1,13 @@
 #pragma once
 
+#include <algorithm>         // std::max
 #include <cstddef>           // std::size_t, std::ptrdiff_t
 #include <initializer_list>  // std::initializer_list
 #include <iterator>   // std::reverse_iterator, std::input_iterator, std::distance
 #include <limits>     // std::numeric_limits
 #include <memory>     // std::construct_at, std::destroy_at, std::destroy_n, std::uninitialized_copy_n
 #include <new>        // ::operator new, std::align_val_t, std::bad_array_new_length
-#include <stdexcept>  // std::out_of_range
+#include <stdexcept>  // std::out_of_range, std::length_error
 #include <string>     // std::to_string
 #include <utility>    // std::move, std::forward, std::exchange, std::move_if_noexcept, std::swap
 
@@ -194,9 +195,13 @@ public:
 
     // Ən azı new_capacity elementlik yer ayırır, mövcud elementləri köçürür.
     // Heç bir yeni obyekt QURMUR. Kiçik və ya bərabər dəyər üçün heç nə etmir.
+    // new_capacity > max_size() olarsa std::length_error atır.
     void reserve(size_type new_capacity) {
         if (new_capacity <= capacity_) {
             return;
+        }
+        if (new_capacity > max_size()) {
+            throw std::length_error("mystl::vector::reserve: capacity exceeds max_size()");
         }
         T* new_data = allocate(new_capacity);
         try {
@@ -254,10 +259,55 @@ public:
     const_reverse_iterator crbegin() const noexcept { return rbegin(); }
     const_reverse_iterator crend() const noexcept { return rend(); }
 
-    // --- Tutum ---------------------------------------------------------------
+    // --- B3: Tutum --------------------------------------------------------------
 
+    // [[nodiscard]]: `v.empty();` yazıb nəticəni atsan, kompilyator xəbərdarlıq edir
+    // (çox vaxt səhvən clear() nəzərdə tutulur).
+    [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
     size_type size() const noexcept { return size_; }
     size_type capacity() const noexcept { return capacity_; }
+
+    // Nəzəri maksimum element sayı. end() - begin() fərqi difference_type-a
+    // (std::ptrdiff_t, işarəli) sığmalıdır, ona görə size_t-nin yarısı əsas götürülür.
+    size_type max_size() const noexcept {
+        return static_cast<size_type>(std::numeric_limits<difference_type>::max()) / sizeof(T);
+    }
+
+    // capacity-ni size-a endirir: artıq yaddaşı qaytarır.
+    // Elementlər yeni, dəqiq ölçülü buffer-ə köçürülür. Exception olsa, heç nə dəyişmir.
+    void shrink_to_fit() {
+        if (size_ == capacity_) {
+            return;
+        }
+        if (size_ == 0) {
+            deallocate(data_);
+            data_ = nullptr;
+            capacity_ = 0;
+            return;
+        }
+        T* new_data = allocate(size_);
+        try {
+            relocate_into(new_data);
+        } catch (...) {
+            deallocate(new_data);
+            throw;
+        }
+        replace_buffer(new_data, size_);
+    }
+
+    // Ölçünü count-a dəyişir.
+    //   count < size:  artıq elementlər (sondan) dağıdılır, capacity qalır
+    //   count > size:  yeni elementlər sona əlavə olunur: T{} (value-initialized)
+    // Exception olsa, vektor dəyişmir (strong guarantee).
+    void resize(size_type count) {
+        resize_impl(count, [](T* p) { std::construct_at(p); });
+    }
+
+    // Eyni, amma yeni elementlər value-nun kopyasıdır.
+    // value vektorun öz elementi ola bilər: v.resize(10, v[0]).
+    void resize(size_type count, const value_type& value) {
+        resize_impl(count, [&value](T* p) { std::construct_at(p, value); });
+    }
 
 private:
     void check_index(size_type index) const {
@@ -280,26 +330,84 @@ private:
             ++size_;
             return;
         }
-
         // Yer yoxdur. value köhnə buffer-in öz elementi ola bilər: v.push_back(v[0]).
-        // Ona görə yeni elementi köhnə buffer dağıdılmamışdan ƏVVƏL qururuq.
-        const size_type new_capacity = next_capacity();
-        T* new_data = allocate(new_capacity);
+        // reallocate_with_tail yeni elementi köhnə buffer dağıdılmamışdan ƏVVƏL qurur.
+        reallocate_with_tail(recommend_capacity(size_ + 1), 1,
+                             [&value](T* p) { std::construct_at(p, std::forward<U>(value)); });
+    }
+
+    // resize(count) və resize(count, value)-nun ortaq kodu.
+    // construct_one(p): p ünvanında bir yeni element qurur.
+    template <typename ConstructOne>
+    void resize_impl(size_type count, ConstructOne construct_one) {
+        if (count <= size_) {
+            std::destroy(data_ + count, data_ + size_);   // sondan artıqları at
+            size_ = count;
+            return;
+        }
+        const size_type extra = count - size_;
+        if (count > capacity_) {
+            reallocate_with_tail(recommend_capacity(count), extra, construct_one);
+            return;
+        }
+        // Yer var: yeni elementləri yerində qur. Biri exception atsa,
+        // bu çağırışda qurulanları dağıdıb vektoru əvvəlki ölçüsünə qaytarırıq.
+        const size_type old_size = size_;
         try {
-            std::construct_at(new_data + size_, std::forward<U>(value));
+            for (; size_ < count; ++size_) {
+                construct_one(data_ + size_);
+            }
         } catch (...) {
+            std::destroy(data_ + old_size, data_ + size_);
+            size_ = old_size;
+            throw;
+        }
+    }
+
+    // --- Yenidən ayırma (reallocation) ----------------------------------------
+
+    // new_capacity-lik yeni buffer qurur:
+    //   [size_, size_ + n)  ->  construct_tail ilə n YENİ element (ƏVVƏL qurulur)
+    //   [0, size_)          ->  köhnə elementlər köçürülür (relocate_into)
+    // sonra köhnə buffer-i atır. Exception olsa, heç nə dəyişmir və sızmır.
+    //
+    // Yeni elementlərin əvvəl qurulması alias halını həll edir: onlar köhnə
+    // buffer-dəki elementdən (v[0]) qurulursa, o element hələ canlıdır.
+    template <typename ConstructOne>
+    void reallocate_with_tail(size_type new_capacity, size_type n, ConstructOne construct_tail) {
+        T* new_data = allocate(new_capacity);
+        size_type built = 0;
+        try {
+            for (; built < n; ++built) {
+                construct_tail(new_data + size_ + built);
+            }
+        } catch (...) {
+            std::destroy_n(new_data + size_, built);
             deallocate(new_data);
             throw;
         }
         try {
             relocate_into(new_data);
         } catch (...) {
-            std::destroy_at(new_data + size_);
+            std::destroy_n(new_data + size_, n);
             deallocate(new_data);
             throw;
         }
         replace_buffer(new_data, new_capacity);
-        ++size_;
+        size_ += n;
+    }
+
+    // Ən azı `required` elementə yer lazımdır: yeni capacity nə olsun?
+    // Həndəsi böyümə (2×), amma tələb olunandan az yox və max_size()-dan çox yox.
+    size_type recommend_capacity(size_type required) const {
+        const size_type max = max_size();
+        if (required > max) {
+            throw std::length_error("mystl::vector: size would exceed max_size()");
+        }
+        if (capacity_ >= max / 2) {
+            return max;   // 2× daşardı
+        }
+        return std::max(capacity_ * 2, required);
     }
 
     // --- Köçürmə (relocation) -----------------------------------------------
@@ -346,10 +454,6 @@ private:
             throw;
         }
         return new_data;
-    }
-
-    size_type next_capacity() const {
-        return (capacity_ == 0) ? 1 : capacity_ * 2;
     }
 
     // --- Xam yaddaş ---------------------------------------------------------
