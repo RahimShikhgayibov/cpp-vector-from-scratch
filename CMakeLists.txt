@@ -43,6 +43,7 @@ endif()
 enable_testing()
 add_executable(tests
   tests/test_main.cpp
+  tests/test_int_vector.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
