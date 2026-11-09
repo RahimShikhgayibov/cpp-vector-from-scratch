@@ -1,19 +1,49 @@
 #pragma once
 
-#include <algorithm>         // std::max
+#include <algorithm>         // std::max, std::rotate, std::move_backward, std::equal, ...
+#include <compare>           // operator<=>, std::weak_ordering
+#include <concepts>          // std::three_way_comparable
 #include <cstddef>           // std::size_t, std::ptrdiff_t
 #include <initializer_list>  // std::initializer_list
-#include <iterator>   // std::reverse_iterator, std::input_iterator, std::distance
-#include <limits>     // std::numeric_limits
-#include <memory>     // std::construct_at, std::destroy_at, std::destroy_n, std::uninitialized_copy_n
-#include <new>        // ::operator new, std::align_val_t, std::bad_array_new_length
-#include <stdexcept>  // std::out_of_range, std::length_error
-#include <string>     // std::to_string
-#include <utility>    // std::move, std::forward, std::exchange, std::move_if_noexcept, std::swap
+#include <iterator>          // std::reverse_iterator, std::input_iterator, std::distance
+#include <limits>            // std::numeric_limits
+#include <memory>            // std::construct_at, std::destroy_at, std::destroy_n, ...
+#include <new>               // ::operator new, std::align_val_t, std::bad_array_new_length
+#include <stdexcept>         // std::out_of_range, std::length_error
+#include <string>            // std::to_string
+#include <utility>           // std::move, std::forward, std::exchange, std::move_if_noexcept
 
 namespace mystl {
 
-// v5: istənilən T üçün dinamik massiv. Yaddaş və obyektlər ayrı idarə olunur,
+namespace detail {
+
+// T-ni leksikoqrafik müqayisə etmək olarmı? Ya <=> var, ya da heç olmasa <.
+template <typename T>
+concept synth_comparable = std::three_way_comparable<T> || requires(const T& a, const T& b) {
+    { a < b } -> std::convertible_to<bool>;
+};
+
+// "Sintetik" üç tərəfli müqayisə (standartdakı synth-three-way kimi):
+// T-də <=> varsa onu istifadə edir, yoxdursa < ilə nəticəni özü qurur.
+// Belə olanda yalnız operator< yazılmış köhnə tiplər də müqayisə oluna bilir.
+struct synth_three_way_t {
+    template <typename T>
+    constexpr auto operator()(const T& a, const T& b) const {
+        if constexpr (std::three_way_comparable<T>) {
+            return a <=> b;
+        } else {
+            if (a < b) return std::weak_ordering::less;
+            if (b < a) return std::weak_ordering::greater;
+            return std::weak_ordering::equivalent;
+        }
+    }
+};
+inline constexpr synth_three_way_t synth_three_way{};
+
+}  // namespace detail
+
+// istənilən T üçün dinamik massiv (std::vector-un analoqu, allocator və
+// vector<bool> xaric). Yaddaş və obyektlər ayrı idarə olunur,
 // elementlər mümkün olanda KÖÇÜRÜLÜR (move), kopyalanmır.
 //
 // Yaddaş modeli (size = 3, capacity = 5):
@@ -424,6 +454,33 @@ public:
         resize_impl(count, [&value](T* p) { std::construct_at(p, value); });
     }
 
+    // --- B5: Müqayisə və ümumi swap --------------------------------------------
+    //
+    // "Hidden friend": sinfin içində təyin olunmuş friend funksiyalar yalnız
+    // ADL (argument-dependent lookup) ilə tapılır, yəni yalnız arqumentlərdən
+    // biri mystl::vector olanda. Bu, lazımsız overload-ları və gizli çevirmələri azaldır.
+
+    // Bərabərlik: eyni ölçü və hər element ==. Ölçülər fərqlidirsə, elementlərə baxmır.
+    // C++20: a != b avtomatik olaraq !(a == b) kimi yazılır, ayrıca operator lazım deyil.
+    friend bool operator==(const vector& a, const vector& b) {
+        return a.size_ == b.size_ && std::equal(a.begin(), a.end(), b.begin());
+    }
+
+    // Leksikoqrafik sıra (lüğət sırası): ilk fərqli element qərar verir;
+    // biri digərinin başlanğıcıdırsa, qısa olan kiçikdir.
+    // C++20: <, <=, >, >= avtomatik olaraq (a <=> b) < 0 və s. kimi yazılır.
+    // Nəticə tipi T-dən asılıdır: int -> strong_ordering, double -> partial_ordering.
+    friend auto operator<=>(const vector& a, const vector& b)
+        requires detail::synth_comparable<T>
+    {
+        return std::lexicographical_compare_three_way(a.begin(), a.end(), b.begin(), b.end(),
+                                                      detail::synth_three_way);
+    }
+
+    // swap(a, b): std::swap(a, b) əvəzinə ADL ilə tapılır. std::swap üç move
+    // edərdi, bu isə birbaşa üzvləri dəyişir. Hər ikisi O(1), bu daha sadədir.
+    friend void swap(vector& a, vector& b) noexcept { a.swap(b); }
+
 private:
     void check_index(size_type index) const {
         if (index >= size_) {
@@ -613,5 +670,27 @@ private:
 // lazım deyil: `mystl::vector v{1, 2, 3};` constructor-dan özü çıxarılır.
 template <std::input_iterator InputIt>
 vector(InputIt, InputIt) -> vector<std::iter_value_t<InputIt>>;
+
+// --- B5: Ümumi funksiyalar (C++20 std::erase / std::erase_if analoqları) ------
+//
+// Erase-remove idiomunu bir çağırışa yığır. Silinən elementlərin sayını qaytarır.
+//   mystl::erase(v, 0);                                  // bütün 0-ları sil
+//   mystl::erase_if(v, [](int x) { return x < 0; });     // mənfiləri sil
+
+template <typename T, typename U>
+typename vector<T>::size_type erase(vector<T>& v, const U& value) {
+    const auto new_end = std::remove(v.begin(), v.end(), value);
+    const auto removed = static_cast<typename vector<T>::size_type>(v.end() - new_end);
+    v.erase(new_end, v.end());
+    return removed;
+}
+
+template <typename T, typename Pred>
+typename vector<T>::size_type erase_if(vector<T>& v, Pred pred) {
+    const auto new_end = std::remove_if(v.begin(), v.end(), pred);
+    const auto removed = static_cast<typename vector<T>::size_type>(v.end() - new_end);
+    v.erase(new_end, v.end());
+    return removed;
+}
 
 }  // namespace mystl

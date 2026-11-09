@@ -17,7 +17,7 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | B2 | Constructor-lar və mənimsəmə | ✅ |
 | B3 | Tutum: `resize`, `shrink_to_fit`, `max_size` | ✅ |
 | B4 | Modifikatorlar: `emplace`, `insert`, `erase` | ✅ |
-| B5 | Müqayisə operatorları, `swap(a, b)` | ⏳ |
+| B5 | Müqayisə operatorları, `swap(a, b)` | ✅ |
 | B6 | Growth policy, iterator invalidation cədvəli | ⏳ |
 | C | Testlər, differential test, sanitizer-lər | ⏳ |
 | D | Benchmark və 7 tədqiqat sualı | ⏳ |
@@ -60,3 +60,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [B2: constructor-lar və mənimsəmə](docs/izah/08-b2-constructorlar.md)
 - [B3: tutum](docs/izah/09-b3-tutum.md)
 - [B4: modifikatorlar](docs/izah/10-b4-modifikatorlar.md)
+- [B5: müqayisə və ümumi funksiyalar](docs/izah/11-b5-muqayise.md)

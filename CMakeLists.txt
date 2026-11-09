@@ -51,6 +51,7 @@ add_executable(tests
   tests/test_vector_construct.cpp
   tests/test_vector_capacity.cpp
   tests/test_vector_modifiers.cpp
+  tests/test_vector_compare.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
