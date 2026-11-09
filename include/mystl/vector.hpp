@@ -138,7 +138,7 @@ public:
             // Input iterator (məs. istream_iterator) yalnız bir dəfə keçilə bilir:
             // neçə element olacağını əvvəlcədən bilmirik, ona görə bir-bir əlavə edirik.
             for (; first != last; ++first) {
-                append(*first);
+                emplace_back(*first);
             }
         }
     }
@@ -180,17 +180,132 @@ public:
         std::swap(capacity_, other.capacity_);
     }
 
+    // --- B4: Modifikatorlar -------------------------------------------------------
+
     // lvalue: arqument kopyalanır.  v.push_back(s);
-    void push_back(const T& value) { append(value); }
+    void push_back(const T& value) { emplace_back(value); }
 
     // rvalue: arqument köçürülür.    v.push_back(std::move(s));  v.push_back(T(...));
-    void push_back(T&& value) { append(std::move(value)); }
+    void push_back(T&& value) { emplace_back(std::move(value)); }
+
+    // Elementi BİRBAŞA vektorun yaddaşında, verilən arqumentlərlə qurur:
+    //   v.emplace_back("abc", 3);   // T("abc", 3) — müvəqqəti obyekt yoxdur
+    // Args&&... "forwarding reference" paketidir: hər arqument öz növü
+    // (lvalue/rvalue) ilə T-nin constructor-una ötürülür (std::forward).
+    // Yeni elementə reference qaytarır (C++17).
+    template <typename... Args>
+    reference emplace_back(Args&&... args) {
+        if (size_ < capacity_) {
+            std::construct_at(data_ + size_, std::forward<Args>(args)...);
+            ++size_;
+        } else {
+            // Arqumentlər köhnə buffer-dəki elementə istinad edə bilər: v.emplace_back(v[0]).
+            // reallocate_with_tail yeni elementi köhnə buffer dağıdılmamışdan ƏVVƏL qurur.
+            reallocate_with_tail(recommend_capacity(size_ + 1), 1, [&](T* p) {
+                std::construct_at(p, std::forward<Args>(args)...);
+            });
+        }
+        return back();
+    }
 
     // Son elementi dağıdır. Yaddaş qalır (capacity dəyişmir).
     // Boş vektorda çağırmaq undefined behavior-dur (std::vector-da da belədir).
     void pop_back() {
         --size_;
         std::destroy_at(data_ + size_);
+    }
+
+    // Bütün elementləri dağıdır. capacity qalır (yaddaş qaytarılmır).
+    void clear() noexcept {
+        std::destroy_n(data_, size_);
+        size_ = 0;
+    }
+
+    // pos-dan ƏVVƏL yeni element qurur, ona iterator qaytarır.
+    //
+    //   [ a | b | c | d ]          emplace(begin() + 1, x)
+    //   1. sona qur:      [ a | b | c | d | x ]     (emplace_back: alias və böyümə təhlükəsiz)
+    //   2. x-i saxla:     tmp = move(x)
+    //   3. sağa sür:      [ a | b | b | c | d ]     (std::move_backward)
+    //   4. yerinə qoy:    [ a | x | b | c | d ]
+    //
+    // Mürəkkəblik: O(1) + O(end - pos) köçürmə. Sonda: amortized O(1).
+    template <typename... Args>
+    iterator emplace(const_iterator pos, Args&&... args) {
+        const size_type index = index_of(pos);
+        emplace_back(std::forward<Args>(args)...);
+        if (index + 1 != size_) {
+            T new_element(std::move(back()));
+            std::move_backward(begin() + index, end() - 1, end());
+            data_[index] = std::move(new_element);
+        }
+        return begin() + index;
+    }
+
+    iterator insert(const_iterator pos, const T& value) { return emplace(pos, value); }
+    iterator insert(const_iterator pos, T&& value) { return emplace(pos, std::move(value)); }
+
+    // pos-dan əvvəl value-nun count kopyası.
+    iterator insert(const_iterator pos, size_type count, const T& value) {
+        const size_type index = index_of(pos);
+        const size_type old_size = size_;
+        append_n(count, [&value](T* p) { std::construct_at(p, value); });
+        std::rotate(begin() + index, begin() + old_size, end());
+        return begin() + index;
+    }
+
+    // pos-dan əvvəl [first, last) aralığının kopyası.
+    // Şərt (std::vector-da da belədir): first və last bu vektorun iterator-ları olmamalıdır.
+    template <std::input_iterator InputIt>
+    iterator insert(const_iterator pos, InputIt first, InputIt last) {
+        const size_type index = index_of(pos);
+        const size_type old_size = size_;
+        if constexpr (std::forward_iterator<InputIt>) {
+            const auto count = static_cast<size_type>(std::distance(first, last));
+            append_n(count, [&first](T* p) {
+                std::construct_at(p, *first);
+                ++first;
+            });
+        } else {
+            // Sayı bilmirik: bir-bir sona əlavə et. Uğursuz olsa, əlavə olunanları geri al.
+            try {
+                for (; first != last; ++first) {
+                    emplace_back(*first);
+                }
+            } catch (...) {
+                std::destroy(data_ + old_size, data_ + size_);
+                size_ = old_size;
+                throw;
+            }
+        }
+        std::rotate(begin() + index, begin() + old_size, end());
+        return begin() + index;
+    }
+
+    iterator insert(const_iterator pos, std::initializer_list<T> init) {
+        return insert(pos, init.begin(), init.end());
+    }
+
+    // pos-dakı elementi silir. Sonrakı elementlər bir addım sola sürüşür.
+    // Silinəndən sonrakı elementə iterator qaytarır (sonuncu silinibsə end()).
+    // Mürəkkəblik: O(end - pos).
+    iterator erase(const_iterator pos) {
+        const size_type index = index_of(pos);
+        std::move(begin() + index + 1, end(), begin() + index);
+        pop_back();
+        return begin() + index;
+    }
+
+    // [first, last) aralığını silir.
+    iterator erase(const_iterator first, const_iterator last) {
+        const size_type index = index_of(first);
+        const auto count = static_cast<size_type>(last - first);
+        if (count != 0) {
+            iterator new_end = std::move(begin() + index + count, end(), begin() + index);
+            std::destroy(new_end, end());
+            size_ -= count;
+        }
+        return begin() + index;
     }
 
     // Ən azı new_capacity elementlik yer ayırır, mövcud elementləri köçürür.
@@ -317,44 +432,35 @@ private:
         }
     }
 
-    // --- Element əlavə etmək -------------------------------------------------
-
-    // Hər iki push_back-in ortaq kodu. U&& burada "forwarding reference"-dir:
-    // lvalue gələndə U = const T&, rvalue gələndə U = T olur.
-    // std::forward<U>(value) dəyərin əvvəlki növünü (lvalue/rvalue) bərpa edir:
-    // lvalue kopyalanır, rvalue köçürülür. (Ətraflı: B4, emplace_back.)
-    template <typename U>
-    void append(U&& value) {
-        if (size_ < capacity_) {
-            std::construct_at(data_ + size_, std::forward<U>(value));
-            ++size_;
-            return;
-        }
-        // Yer yoxdur. value köhnə buffer-in öz elementi ola bilər: v.push_back(v[0]).
-        // reallocate_with_tail yeni elementi köhnə buffer dağıdılmamışdan ƏVVƏL qurur.
-        reallocate_with_tail(recommend_capacity(size_ + 1), 1,
-                             [&value](T* p) { std::construct_at(p, std::forward<U>(value)); });
+    // const_iterator -> indeks. insert/erase iterator qəbul edir, amma
+    // böyümə zamanı iterator etibarsız olur; indeks isə dəyişmir.
+    size_type index_of(const_iterator pos) const noexcept {
+        return static_cast<size_type>(pos - cbegin());
     }
 
-    // resize(count) və resize(count, value)-nun ortaq kodu.
-    // construct_one(p): p ünvanında bir yeni element qurur.
+    // --- Element əlavə etmək -------------------------------------------------
+
+    // Sona count yeni element əlavə edir; construct_one(p) p ünvanında birini qurur.
+    // resize, insert(pos, n, value) və insert(pos, first, last) bunu istifadə edir.
+    // Exception olsa, vektor dəyişmir (strong guarantee).
     template <typename ConstructOne>
-    void resize_impl(size_type count, ConstructOne construct_one) {
-        if (count <= size_) {
-            std::destroy(data_ + count, data_ + size_);   // sondan artıqları at
-            size_ = count;
+    void append_n(size_type count, ConstructOne construct_one) {
+        if (count == 0) {
             return;
         }
-        const size_type extra = count - size_;
-        if (count > capacity_) {
-            reallocate_with_tail(recommend_capacity(count), extra, construct_one);
+        if (count > max_size() - size_) {   // size_ + count daşmasın
+            throw std::length_error("mystl::vector: size would exceed max_size()");
+        }
+        if (size_ + count > capacity_) {
+            reallocate_with_tail(recommend_capacity(size_ + count), count, construct_one);
             return;
         }
         // Yer var: yeni elementləri yerində qur. Biri exception atsa,
         // bu çağırışda qurulanları dağıdıb vektoru əvvəlki ölçüsünə qaytarırıq.
         const size_type old_size = size_;
+        const size_type new_size = size_ + count;
         try {
-            for (; size_ < count; ++size_) {
+            for (; size_ < new_size; ++size_) {
                 construct_one(data_ + size_);
             }
         } catch (...) {
@@ -362,6 +468,17 @@ private:
             size_ = old_size;
             throw;
         }
+    }
+
+    // resize(count) və resize(count, value)-nun ortaq kodu.
+    template <typename ConstructOne>
+    void resize_impl(size_type count, ConstructOne construct_one) {
+        if (count <= size_) {
+            std::destroy(data_ + count, data_ + size_);   // sondan artıqları at
+            size_ = count;
+            return;
+        }
+        append_n(count - size_, construct_one);
     }
 
     // --- Yenidən ayırma (reallocation) ----------------------------------------
