@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstddef>    // std::size_t, std::ptrdiff_t
-#include <iterator>   // std::reverse_iterator
+#include <cstddef>           // std::size_t, std::ptrdiff_t
+#include <initializer_list>  // std::initializer_list
+#include <iterator>   // std::reverse_iterator, std::input_iterator, std::distance
 #include <limits>     // std::numeric_limits
 #include <memory>     // std::construct_at, std::destroy_at, std::destroy_n, std::uninitialized_copy_n
 #include <new>        // ::operator new, std::align_val_t, std::bad_array_new_length
@@ -92,6 +93,84 @@ public:
         vector moved(std::move(other));
         swap(moved);
         return *this;
+    }
+
+    // --- B2: Constructor-lar ---------------------------------------------------
+    //
+    // Hamısı əvvəlcə default constructor-a DELEGATE edir (": vector()").
+    // Səbəb: delegate edilən constructor bitən kimi obyekt "qurulmuş" sayılır.
+    // Gövdədə exception olsa, destructor ÇAĞIRILIR və artıq qurulmuş
+    // elementlər dağıdılır, yaddaş qaytarılır. Delegation olmasaydı, yarımçıq
+    // obyektin destructor-u çağırılmazdı və hər şey sızardı.
+
+    // count ədəd value-initialized element: int üçün 0, string üçün "".
+    // explicit: `vector<int> v = 5;` kimi gözlənilməz çevirmələrə icazə vermir.
+    explicit vector(size_type count) : vector() {
+        reserve(count);
+        for (; size_ < count; ++size_) {
+            std::construct_at(data_ + size_);  // T{} (value-initialization)
+        }
+    }
+
+    // count ədəd value-nun kopyası.
+    vector(size_type count, const T& value) : vector() {
+        reserve(count);
+        for (; size_ < count; ++size_) {
+            std::construct_at(data_ + size_, value);
+        }
+    }
+
+    // [first, last) aralığındakı elementlərin kopyası.
+    // std::input_iterator konsepti vacibdir: onsuz vector<int>(5, 1) çağırışı
+    // bu template-i InputIt = int ilə seçərdi və "5 ədəd 1" əvəzinə int-ləri
+    // iterator kimi istifadə etməyə çalışardı.
+    template <std::input_iterator InputIt>
+    vector(InputIt first, InputIt last) : vector() {
+        if constexpr (std::forward_iterator<InputIt>) {
+            // Aralığı iki dəfə keçmək olar: əvvəl say, bir dəfə yer ayır.
+            reserve(static_cast<size_type>(std::distance(first, last)));
+            for (; first != last; ++first) {
+                std::construct_at(data_ + size_, *first);
+                ++size_;
+            }
+        } else {
+            // Input iterator (məs. istream_iterator) yalnız bir dəfə keçilə bilir:
+            // neçə element olacağını əvvəlcədən bilmirik, ona görə bir-bir əlavə edirik.
+            for (; first != last; ++first) {
+                append(*first);
+            }
+        }
+    }
+
+    // vector<int> v{1, 2, 3};   vector<int> v = {1, 2, 3};
+    vector(std::initializer_list<T> init) : vector(init.begin(), init.end()) {}
+
+    // --- B2: Mənimsəmə ---------------------------------------------------------
+    //
+    // Hamısı "qur, sonra swap" üsulu ilə yazılıb (copy-and-swap kimi):
+    // strong exception guarantee verir və value vektorun öz elementi olsa belə
+    // düzgün işləyir: v.assign(3, v[0]).
+    // Qiyməti: std::vector köhnə buffer-i yetərli olanda təkrar istifadə edir,
+    // bizim versiya isə həmişə yeni buffer ayırır.
+
+    vector& operator=(std::initializer_list<T> init) {
+        assign(init);
+        return *this;
+    }
+
+    void assign(size_type count, const T& value) {
+        vector replacement(count, value);
+        swap(replacement);
+    }
+
+    template <std::input_iterator InputIt>
+    void assign(InputIt first, InputIt last) {
+        vector replacement(first, last);
+        swap(replacement);
+    }
+
+    void assign(std::initializer_list<T> init) {
+        assign(init.begin(), init.end());
     }
 
     void swap(vector& other) noexcept {
@@ -307,5 +386,11 @@ private:
     size_type size_ = 0;
     size_type capacity_ = 0;
 };
+
+// Deduction guide (CTAD): `mystl::vector v(list.begin(), list.end());` yazanda
+// T-ni iterator-un element tipindən çıxarır. initializer_list üçün guide
+// lazım deyil: `mystl::vector v{1, 2, 3};` constructor-dan özü çıxarılır.
+template <std::input_iterator InputIt>
+vector(InputIt, InputIt) -> vector<std::iter_value_t<InputIt>>;
 
 }  // namespace mystl

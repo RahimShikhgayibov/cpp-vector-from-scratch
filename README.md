@@ -14,7 +14,7 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | A4 | v4: xam yaddaş, placement new | ✅ |
 | A5 | v5: move semantics, rule of five | ✅ |
 | B1 | Elementə giriş və iterator-lar | ✅ |
-| B2 | Constructor-lar və mənimsəmə | ⏳ |
+| B2 | Constructor-lar və mənimsəmə | ✅ |
 | B3 | Tutum: `resize`, `shrink_to_fit`, `max_size` | ⏳ |
 | B4 | Modifikatorlar: `emplace`, `insert`, `erase` | ⏳ |
 | B5 | Müqayisə operatorları, `swap(a, b)` | ⏳ |
@@ -57,3 +57,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [A4: xam yaddaş və placement new](docs/izah/05-a4-xam-yaddas.md)
 - [A5: move semantics və rule of five](docs/izah/06-a5-move-semantics.md)
 - [B1: elementə giriş və iterator-lar](docs/izah/07-b1-giris-ve-iteratorlar.md)
+- [B2: constructor-lar və mənimsəmə](docs/izah/08-b2-constructorlar.md)
