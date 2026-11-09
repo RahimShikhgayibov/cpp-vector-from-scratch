@@ -63,6 +63,11 @@ add_executable(differential tests/differential.cpp)
 target_link_libraries(differential PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME differential COMMAND differential)
 
+# --- Benchmark (Faza D) --------------------------------------------------------
+# Mənalı nəticə yalnız Release build-də: cmake --preset release
+add_executable(benchmarks bench/benchmarks.cpp)
+target_link_libraries(benchmarks PRIVATE mystl mystl_warnings)
+
 # --- Təcrübələr (Faza A-nın kiçik proqramları) -------------------------------
 add_executable(a0_noisy experiments/a0_noisy.cpp)
 target_link_libraries(a0_noisy PRIVATE mystl_warnings mystl_sanitizers)

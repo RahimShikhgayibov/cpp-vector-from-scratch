@@ -1,0 +1,3 @@
+policy,up_to_size,mean_waste_ratio,max_waste_ratio
+2x,1000000,0.261014,0.499999
+1.5x,1000000,0.173787,0.333332

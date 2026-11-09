@@ -32,7 +32,7 @@ mystl::vector<int, mystl::growth::one_and_half> w;   // 1.5× böyümə siyasət
 | B6 | Growth policy, iterator invalidation cədvəli | ✅ |
 | C | Testlər, differential test, coverage | ✅ |
 | C | ASan + UBSan Linux-da | ⏳ |
-| D | Benchmark və 7 tədqiqat sualı | ⏳ |
+| D | Benchmark və 7 tədqiqat sualı | ✅ |
 
 ## İnterfeys
 
@@ -50,6 +50,19 @@ mystl::vector<int, mystl::growth::one_and_half> w;   // 1.5× böyümə siyasət
 | Əlavə | böyümə siyasəti (`growth::doubling`, `growth::one_and_half`), CTAD |
 
 **Exception safety:** `push_back`, `emplace_back`, `reserve`, `resize`, `shrink_to_fit`, sona `insert`, copy assignment və `assign` **strong guarantee** verir (exception olsa, vektor dəyişmir). Ortaya `insert`/`erase` **basic guarantee** verir (`std::vector` kimi).
+
+## Benchmark
+
+`mystl::vector` `std::vector` (libstdc++) ilə praktik olaraq eyni sürətdədir: 8 əməliyyatdan 7-sində fərq ±5%-dən azdır. Bütün 7 tədqiqat sualının cavabı, qrafiklər və metodologiya: [docs/izah/14-d-benchmark.md](docs/izah/14-d-benchmark.md).
+
+![mystl və std müqayisəsi](docs/benchmark/q7.png)
+
+```
+cmake --preset release
+cmake --build --preset release --target benchmarks
+build/release/benchmarks.exe --repeats=9      # CSV: docs/benchmark/data/
+python scripts/plot_benchmarks.py             # qrafiklər: docs/benchmark/
+```
 
 ## Iterator invalidation
 
@@ -115,3 +128,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [B5: müqayisə və ümumi funksiyalar](docs/izah/11-b5-muqayise.md)
 - [B6: peşəkar səviyyə](docs/izah/12-b6-pesekar-seviyye.md)
 - [Faza C: testlər](docs/izah/13-c-testler.md)
+- [Faza D: benchmark və 7 sual](docs/izah/14-d-benchmark.md)
