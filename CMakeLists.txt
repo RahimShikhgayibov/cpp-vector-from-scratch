@@ -47,3 +47,6 @@ add_executable(tests
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
 
+# --- Təcrübələr (Faza A-nın kiçik proqramları) -------------------------------
+add_executable(a0_noisy experiments/a0_noisy.cpp)
+target_link_libraries(a0_noisy PRIVATE mystl_warnings mystl_sanitizers)

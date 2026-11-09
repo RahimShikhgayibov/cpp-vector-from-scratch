@@ -7,7 +7,7 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | Faza | Addım | Vəziyyət |
 |---|---|---|
 | 0 | Repo skeleti, CMake, doctest, ilk test | ✅ |
-| A0 | Obyektin ömrü: `Noisy` təcrübəsi | ⏳ |
+| A0 | Obyektin ömrü: `Noisy` təcrübəsi | ✅ |
 | A1 | v1: `IntVector` | ⏳ |
 | A2 | v2: kopyalama, rule of three | ⏳ |
 | A3 | v3: template `mystl::vector<T>` | ⏳ |
@@ -45,3 +45,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 ## İzahlar
 
 - [Faza 0: repo və alətlər](docs/izah/00-faza0-repo-ve-aletler.md)
+- [A0: obyektin ömrü](docs/izah/01-a0-obyektin-omru.md)
