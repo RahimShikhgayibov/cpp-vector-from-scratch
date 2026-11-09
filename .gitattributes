@@ -1,0 +1,2 @@
+# Shell skriptləri Linux-da (Docker) işləyir: Windows-da da LF sətir sonu saxlanılmalıdır
+*.sh text eol=lf

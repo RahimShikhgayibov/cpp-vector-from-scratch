@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<title>mystl::vector — Layihə təklifi</title>
+<style>
+  @page { size: A4; margin: 20mm 20mm; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: #1d2433; font-size: 10.8pt; line-height: 1.5; margin: 0; }
+  h1 { font-size: 18pt; color: #1f5fa8; margin: 0 0 2pt; }
+  .sub { color: #5b6475; margin-bottom: 12pt; }
+  h2 { font-size: 12pt; color: #1f5fa8; margin: 12pt 0 4pt; border-bottom: 1pt solid #1f5fa8; padding-bottom: 2pt; }
+  p { margin: 3pt 0 6pt; text-align: justify; }
+  ul, ol { margin: 2pt 0 6pt; padding-left: 18pt; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f1f5fa; padding: 0 2pt; }
+  table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+  th, td { border: 0.6pt solid #d7dce4; padding: 3pt 6pt; text-align: left; }
+  th { background: #f1f5fa; }
+</style>
+</head>
+<body>
+<h1>Layihə təklifi: <code>std::vector</code> sıfırdan</h1>
+<div class="sub">Rahim Shikhgayibov · Sərbəst iş · github.com/RahimShikhgayibov/cpp-vector-from-scratch</div>
+
+<h2>Problem statement</h2>
+<p>Dinamik massiv proqramlaşdırmada ən çox istifadə olunan məlumat strukturudur: elementləri yaddaşda ardıcıl saxlayır,
+O(1) indeksləmə verir və lazım olduqca böyüyür. C++-da onu <code>std::vector</code> təmin edir. İstifadəsi asandır, amma düzgün
+implementasiyası obyektin ömrünün əl ilə idarəsini, xam yaddaşı, rule of five-ı, move semantics-i və exception safety-ni
+tələb edir. Layihədə <code>std::vector</code>-un tam işlək analoqu sıfırdan yazılacaq, düzgünlüyü testlərlə sübut olunacaq və
+xüsusiyyətləri ölçmə ilə tədqiq ediləcək.</p>
+
+<h2>Məqsədlər</h2>
+<ol>
+  <li><code>mystl::vector&lt;T&gt;</code>: <code>std::vector</code>-un bütün interfeysi (custom allocator və <code>vector&lt;bool&gt;</code> xaric).</li>
+  <li>Mərhələli təkamül (v1–v5): hər versiya əvvəlkinin konkret problemini həll edir.</li>
+  <li>Düzgünlüyün sübutu: unit testlər, <code>std::vector</code> ilə differential test, sanitizer-lər.</li>
+  <li>Aşağıdakı 7 tədqiqat sualına ölçülmüş cavab.</li>
+</ol>
+
+<h2>Tədqiqat sualları</h2>
+<ol>
+  <li><code>push_back</code> həqiqətən amortized O(1)-dirmi?</li>
+  <li>Böyümə faktoru 2× və 1.5×: hansı yaxşıdır?</li>
+  <li><code>reserve</code> nə qədər qazandırır?</li>
+  <li>Copy ilə move fərqi nədir; <code>noexcept</code> unudulanda nə baş verir?</li>
+  <li>Ortaya <code>insert</code>/<code>erase</code> praktikada nə qədər bahadır?</li>
+  <li>Cache-in təsiri nə qədərdir (vector və linked list traversal)?</li>
+  <li>Nəticə <code>std::vector</code>-a nə qədər yaxındır?</li>
+</ol>
+
+<h2>Metodologiya və alətlər</h2>
+<table>
+  <tr><th>Sahə</th><th>Seçim</th></tr>
+  <tr><td>Dil, standart</td><td>C++20 (konseptlər, <code>&lt;=&gt;</code>, <code>std::construct_at</code>)</td></tr>
+  <tr><td>Build</td><td>CMake 3.20+, Ninja; Debug (warning-lər + sanitizer-lər) və Release (<code>-O2</code>)</td></tr>
+  <tr><td>Testlər</td><td>doctest; sayğac tipi; exception injection; differential test; coverage (gcov)</td></tr>
+  <tr><td>Sanitizer-lər</td><td>AddressSanitizer + UndefinedBehaviorSanitizer (Linux)</td></tr>
+  <tr><td>Benchmark</td><td><code>std::chrono::steady_clock</code>, ≥ 5 təkrar, median; n = 10³…10⁷; CSV + Python/matplotlib qrafikləri</td></tr>
+</table>
+
+<h2>Əhatə xaricində</h2>
+<p>Custom allocator dəstəyi (<code>std::allocator_traits</code>) və <code>vector&lt;bool&gt;</code> ixtisaslaşması.</p>
+
+<h2>Gözlənilən nəticələr</h2>
+<ul>
+  <li>GitHub repository: header-only kitabxana, testlər, benchmark-lar, README.</li>
+  <li>Texniki hesabat: dizayn, mürəkkəblik analizi (amortized O(1) isbatı ilə), testlər, benchmark nəticələri.</li>
+  <li>Təqdimat və müdafiə.</li>
+</ul>
+</body>
+</html>

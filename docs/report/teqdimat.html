@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<title>mystl::vector — Təqdimat</title>
+<style>
+  @page { size: 254mm 142.875mm; margin: 0; }
+  :root { --ink: #1d2433; --muted: #5b6475; --line: #d7dce4; --accent: #1f5fa8; --soft: #f1f5fa; --warn: #c0392b; --ok: #1e8449; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: var(--ink); }
+  .slide { width: 254mm; height: 142.875mm; padding: 11mm 14mm 9mm; position: relative; break-after: page; overflow: hidden; }
+  .slide:last-child { break-after: auto; }
+  h1 { font-size: 30pt; margin: 0; color: var(--accent); }
+  h2 { font-size: 21pt; margin: 0 0 6mm; color: var(--accent); }
+  p, li { font-size: 13.5pt; line-height: 1.38; }
+  ul { margin: 0; padding-left: 7mm; }
+  li { margin: 1.4mm 0; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em; background: var(--soft); padding: 0 1.2mm; border-radius: 1mm; }
+  pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 11pt; background: var(--soft); border: 0.4mm solid var(--line); border-radius: 1.5mm; padding: 3mm 4mm; margin: 0; line-height: 1.3; }
+  table { border-collapse: collapse; width: 100%; font-size: 11.5pt; }
+  th, td { border: 0.3mm solid var(--line); padding: 1.3mm 2.5mm; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  .footer { position: absolute; left: 14mm; right: 14mm; bottom: 4.5mm; font-size: 8.5pt; color: var(--muted); display: flex; justify-content: space-between; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; align-items: start; }
+  .cols-60 { display: grid; grid-template-columns: 1.45fr 1fr; gap: 7mm; align-items: center; }
+  .big { font-size: 40pt; font-weight: 700; color: var(--accent); line-height: 1; }
+  .stat { background: var(--soft); border-radius: 2mm; padding: 4mm 5mm; }
+  .stat .label { font-size: 11pt; color: var(--muted); margin-top: 1.5mm; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin-top: 4mm; }
+  img.graph { width: 100%; }
+  .bad { color: var(--warn); font-weight: 600; }
+  .good { color: var(--ok); font-weight: 600; }
+  .muted { color: var(--muted); }
+  .title { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+  .title .sub { font-size: 16pt; color: var(--muted); margin: 3mm 0 12mm; }
+  .title .who { font-size: 13pt; }
+</style>
+</head>
+<body>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="title">
+    <h1>mystl::vector</h1>
+    <div class="sub">C++20-də <code>std::vector</code>-un sıfırdan implementasiyası:<br>dizayn, testlər və ölçmələr</div>
+    <div class="who">Rahim Shikhgayibov<br><span class="muted">github.com/RahimShikhgayibov/cpp-vector-from-scratch</span></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Problem və məqsəd</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><b>Dinamik massiv:</b> elementlər ardıcıl yaddaşda, O(1) indeksləmə, lazım olduqca böyüyür</li>
+        <li><code>std::vector</code>-u <b>sıfırdan</b> yazmaq: C++-ın ən çətin mövzuları bir layihədə</li>
+        <li>Obyektin ömrü, xam yaddaş, rule of five, move semantics, exception safety, template</li>
+        <li><b>Əhatə:</b> tam interfeys, allocator və <code>vector&lt;bool&gt;</code> xaric</li>
+      </ul>
+    </div>
+    <div>
+      <p><b>7 tədqiqat sualı</b></p>
+      <ol style="margin:0; padding-left:7mm">
+        <li><code>push_back</code> amortized O(1)-dirmi?</li>
+        <li>Böyümə: 2× yoxsa 1.5×?</li>
+        <li><code>reserve</code> nə qədər qazandırır?</li>
+        <li>Copy və move; <code>noexcept</code></li>
+        <li>Ortaya <code>insert</code>/<code>erase</code></li>
+        <li>Cache: vector və linked list</li>
+        <li><code>std::vector</code>-a nə qədər yaxın?</li>
+      </ol>
+    </div>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>2</span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <h2>Yaddaş modeli: [qurulmuş | xam]</h2>
+  <svg width="100%" viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="15">
+    <text x="0" y="78" fill="#1d2433">data_</text>
+    <line x1="48" y1="73" x2="92" y2="73" stroke="#1d2433" stroke-width="2"/>
+    <polygon points="92,67 104,73 92,79" fill="#1d2433"/>
+    <g stroke="#1d2433" stroke-width="1.5">
+      <rect x="108" y="48" width="96" height="50" fill="#cfe0f5"/>
+      <rect x="204" y="48" width="96" height="50" fill="#cfe0f5"/>
+      <rect x="300" y="48" width="96" height="50" fill="#cfe0f5"/>
+      <rect x="396" y="48" width="96" height="50" fill="#fff" stroke-dasharray="6 4"/>
+      <rect x="492" y="48" width="96" height="50" fill="#fff" stroke-dasharray="6 4"/>
+    </g>
+    <text x="146" y="79">e0</text><text x="242" y="79">e1</text><text x="338" y="79">e2</text>
+    <text x="428" y="79" fill="#8a93a3">xam</text><text x="524" y="79" fill="#8a93a3">xam</text>
+    <line x1="108" y1="114" x2="396" y2="114" stroke="#1f5fa8" stroke-width="2"/>
+    <text x="180" y="136" fill="#1f5fa8">size = 3: canlı obyektlər</text>
+    <line x1="108" y1="30" x2="588" y2="30" stroke="#5b6475" stroke-width="1.5"/>
+    <text x="300" y="22" fill="#5b6475">capacity = 5: ayrılmış yer</text>
+  </svg>
+  <ul style="margin-top:4mm">
+    <li>Yaddaş: <code>::operator new</code> (xam) · obyekt: <code>std::construct_at</code> (placement new) · silmə: <code>std::destroy_at</code></li>
+    <li>İnvariant: <code>size ≤ capacity</code>; <code>[0, size)</code> canlı, <code>[size, capacity)</code> xam; buffer-in tək sahibi</li>
+  </ul>
+  <div class="footer"><span>mystl::vector</span><span>3</span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>Niyə <code>new T[]</code> yox?</h2>
+  <div class="cols">
+    <div>
+<pre>OldVector (new T[]):
+  reserve(3):   ctor #2, #3, #4   <span class="bad">← lazımsız</span>
+  push_back:    assign #2 ← #1
+  pop_back:                       <span class="bad">← dağıdılmır</span>
+  ~vector:      dtor #4, #3, #2
+
+mystl::vector (xam yaddaş):
+  reserve(3):                     <span class="good">← heç nə</span>
+  push_back:    copy #6 ← #5
+  pop_back:     dtor #6           <span class="good">← dərhal</span>
+  ~vector:      —</pre>
+    </div>
+    <div>
+      <ul>
+        <li><code>new T[n]</code> yer ayıranda <b>n obyekt qurur</b></li>
+        <li><span class="bad">1.</span> Default constructor-u olmayan tip kompilyasiya olunmur</li>
+        <li><span class="bad">2.</span> <code>reserve</code> lazımsız obyektlər qurur</li>
+        <li><span class="bad">3.</span> <code>pop_back</code> obyekti dağıda bilmir</li>
+        <li><b>Həll:</b> yaddaşı və obyektləri ayırmaq</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>4</span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <h2>Təkamül: v1 → v5</h2>
+  <table>
+    <tr><th>Versiya</th><th>Əlavə</th><th>Həll edilən problem</th></tr>
+    <tr><td><b>v1</b></td><td><code>int*</code>, size, capacity, 2× böyümə</td><td>sabit ölçülü massiv</td></tr>
+    <tr><td><b>v2</b></td><td>copy ctor, copy-and-swap</td><td>shallow copy → <span class="bad">double free</span> (<code>0xC0000374</code>)</td></tr>
+    <tr><td><b>v3</b></td><td><code>template &lt;typename T&gt;</code></td><td>yalnız <code>int</code></td></tr>
+    <tr><td><b>v4</b></td><td>xam yaddaş + placement new</td><td><code>new T[]</code>-in 3 problemi, <code>push_back(v[0])</code> bug-ı</td></tr>
+    <tr><td><b>v5</b></td><td>move semantics, <code>move_if_noexcept</code></td><td>lazımsız kopyalar, <code>unique_ptr</code></td></tr>
+    <tr><td><b>Faza B</b></td><td>iterator-lar, 7 ctor, <code>insert</code>/<code>erase</code>/<code>emplace</code>, <code>&lt;=&gt;</code>, growth policy</td><td>tam <code>std::vector</code> interfeysi</td></tr>
+  </table>
+  <p class="muted" style="margin-top:4mm">Hər versiya ayrıca commit-dir; hər addımın problemi nümayiş proqramı ilə göstərilib.</p>
+  <div class="footer"><span>mystl::vector</span><span>5</span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <h2>Exception safety və alias tələsi</h2>
+  <div class="cols">
+    <div>
+      <p><b>Strong guarantee:</b> exception olsa, vektor dəyişmir</p>
+<pre>1. yeni buffer ayır
+2. YENİ elementi qur        ← v[0] hələ canlıdır
+3. köhnələri köçür (move_if_noexcept)
+   ↳ hər addımın öz catch-i
+4. köhnə buffer-i at        (noexcept)</pre>
+      <p style="font-size:12pt">289 exception ssenarisi ilə yoxlanılıb: hər mümkün nöqtədə</p>
+    </div>
+    <div>
+      <p><b>Tapılan bug:</b> v3-də <code>v.push_back(v[0])</code></p>
+<pre>v3:  köhnə massiv silinir,
+     SONRA v[0] oxunur
+     → use-after-free
+
+"zəhərli" destructor ilə test:
+  v3: v[2] = <span class="bad">-1</span>
+  v4: v[2] = <span class="good">42</span></pre>
+    </div>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>6</span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>Mürəkkəblik və amortized O(1)</h2>
+  <div class="cols">
+    <table>
+      <tr><th>Əməliyyat</th><th>Zaman</th></tr>
+      <tr><td><code>[]</code>, <code>at</code>, iterator-lar, <code>size</code></td><td>O(1)</td></tr>
+      <tr><td><code>push_back</code>, <code>emplace_back</code></td><td>amortized O(1)</td></tr>
+      <tr><td><code>insert</code>/<code>erase</code> (pos)</td><td>O(n − pos)</td></tr>
+      <tr><td>copy, <code>clear</code>, <code>==</code></td><td>O(n)</td></tr>
+      <tr><td>move, <code>swap</code></td><td>O(1)</td></tr>
+      <tr><td><code>reserve</code>, <code>shrink_to_fit</code></td><td>O(n)</td></tr>
+    </table>
+    <div>
+      <p><b>Aggregate metodu</b> (2×):</p>
+      <p style="text-align:center; font-family: Cambria, serif; font-size: 15pt">T(n) = n + Σ 2<sup>j</sup> &lt; n + 2n = 3n</p>
+      <p>→ əməliyyat başına &lt; 3 = <b>O(1)</b></p>
+      <p style="font-size:12pt">Ümumi α: köçürmələr &lt; α·n / (α − 1) → 2×: &lt; 2n, 1.5×: &lt; 3n<br>
+      Sabit artım (+k) olsaydı: ~n²/2k = <span class="bad">O(n²)</span></p>
+    </div>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>7</span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <h2>Sual 1: <code>push_back</code> amortized O(1)-dirmi? <span class="good">Bəli</span></h2>
+  <div class="cols-60">
+    <img class="graph" src="../benchmark/q1.png" alt="q1">
+    <ul>
+      <li>n 10⁴ dəfə artır, vaxt <b>1–5 ns</b> aralığında qalır</li>
+      <li>Köçürmələr həmişə <b>&lt; 2n</b>, n = 10⁷: 1.68n</li>
+      <li>Pilləli forma nəzəriyyədəndir: n-in 2<sup>k</sup>-ya nisbəti</li>
+      <li><code>std::vector</code> ilə köçürmə sayı <b>eynidir</b></li>
+    </ul>
+  </div>
+  <div class="footer"><span>mystl::vector · Ryzen 7 PRO 5850U, g++ 16.2 -O2, 9 təkrar, median</span><span>8</span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <h2>Sual 4: <code>noexcept</code> unudulanda</h2>
+  <div class="cols-60">
+    <img class="graph" src="../benchmark/q4.png" alt="q4">
+    <ul>
+      <li>Fərq yalnız move ctor-dakı <code>noexcept</code> sözüdür</li>
+      <li>Böyümədə <code>move_if_noexcept</code> <b>kopyalamağı</b> seçir</li>
+      <li class="bad">~2× yavaşlama (109 → 207 ns/op)</li>
+      <li>Səssizdir: kod düzgün, sadəcə yavaş</li>
+      <li>Kopya və move: ~2.5× fərq</li>
+    </ul>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>9</span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <h2>Sual 6: cache — ikisi də O(n)</h2>
+  <div class="cols-60">
+    <img class="graph" src="../benchmark/q6.png" alt="q6">
+    <ul>
+      <li>vector: <b>~0.2 ns</b>/element (prefetch)</li>
+      <li>list, ardıcıl düyünlər: ~2–8 ns</li>
+      <li>list, qarışıq düyünlər: <b>~127 ns</b></li>
+      <li class="bad">500–600× fərq</li>
+      <li>L3 (16 MB) dolanda sıçrayış</li>
+    </ul>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>10</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <h2>Digər suallar: 2, 3, 5</h2>
+  <table>
+    <tr><th>Sual</th><th>Nəticə</th></tr>
+    <tr><td><b>2.</b> 2× və 1.5×</td><td>Trade-off: 2× ~25% sürətli (25 və 41 yenidən ayırma, n = 10⁷); 1.5× daha az boş yer (orta 17% və 26%, maksimum 33% və 50%)</td></tr>
+    <tr><td><b>3.</b> <code>reserve</code></td><td><b>1.8–14×</b> qazanc; ən böyüyü orta ölçülərdə (10⁵: 9.5×)</td></tr>
+    <tr><td><b>5.</b> ortaya <code>insert</code>/<code>erase</code></td><td>O(n): n = 10⁷-də əvvələ bir <code>insert</code> <b>~3.8 ms</b>, ortaya ~1.6 ms, sona ~20 ns</td></tr>
+  </table>
+  <div class="footer"><span>mystl::vector</span><span>11</span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <h2>Sual 7: <code>std::vector</code>-a yaxınlıq</h2>
+  <div class="cols-60">
+    <img class="graph" src="../benchmark/q7.png" alt="q7">
+    <ul>
+      <li>mystl / std nisbəti, n ≥ 10⁴, həndəsi orta</li>
+      <li>8 əməliyyatdan 7-si: <b>0.84–1.04</b></li>
+      <li><code>emplace_back(string)</code>: ~10% yavaş</li>
+      <li><b>Praktik olaraq eyni sürət</b></li>
+    </ul>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>12</span></div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <h2>Testlər</h2>
+  <div class="stats">
+    <div class="stat"><div class="big">177</div><div class="label">unit test<br>10 958 yoxlama</div></div>
+    <div class="stat"><div class="big">2M</div><div class="label">differential əməliyyat<br><code>std::vector</code> ilə müqayisə</div></div>
+    <div class="stat"><div class="big">99%</div><div class="label">sətir coverage<br>(gcov)</div></div>
+    <div class="stat"><div class="big">0</div><div class="label">ASan/UBSan xətası<br>(Linux, g++ 14.4)</div></div>
+  </div>
+  <ul style="margin-top:6mm">
+    <li><b>Sayğac tipi:</b> hər testin sonunda canlı obyekt = 0 (sızma və ikiqat destructor yoxdur)</li>
+    <li><b>Exception injection:</b> 289 ssenari, strong guarantee hər nöqtədə</li>
+    <li><b>Mutation testing:</b> bilərəkdən salınan 6 səhvin hamısını testlər tutdu</li>
+    <li><b>Positive control:</b> ASan bilərəkdən səhv proqramlarda leak və double free-ni tutur</li>
+  </ul>
+  <div class="footer"><span>mystl::vector</span><span>13</span></div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <h2>Trade-off-lar və nəticə</h2>
+  <div class="cols">
+    <div>
+      <p><b>Trade-off-lar</b></p>
+      <ul style="font-size:12pt">
+        <li><code>assign</code> həmişə yeni buffer ayırır → strong guarantee</li>
+        <li>Aralıq <code>insert</code>: <code>std::rotate</code> → sadə, alias-a qarşı təhlükəsiz</li>
+        <li>Iterator = pointer: debug yoxlaması yoxdur</li>
+        <li>Əhatə xaricində: allocator, <code>vector&lt;bool&gt;</code></li>
+      </ul>
+    </div>
+    <div>
+      <p><b>Nəticə</b></p>
+      <ul style="font-size:12pt">
+        <li>Tam <code>std::vector</code> interfeysi, 5 versiyalıq təkamül</li>
+        <li>Nəzəriyyə ölçmə ilə təsdiqləndi: köçürmələr &lt; 2n</li>
+        <li>Big-O hər şeyi demir: cache <b>600×</b>, <code>noexcept</code> <b>2×</b></li>
+        <li><code>std::vector</code> ilə eyni sürət</li>
+      </ul>
+    </div>
+  </div>
+  <p style="text-align:center; margin-top:8mm; font-size:18pt; color: var(--accent)"><b>Suallar?</b></p>
+  <div class="footer"><span>github.com/RahimShikhgayibov/cpp-vector-from-scratch</span><span>14</span></div>
+</section>
+
+</body>
+</html>

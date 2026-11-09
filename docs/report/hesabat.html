@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<title>mystl::vector — Texniki hesabat</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root { --ink: #1d2433; --muted: #5b6475; --line: #d7dce4; --accent: #1f5fa8; --soft: #f3f6fa; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: var(--ink); font-size: 10.3pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 21pt; margin: 0 0 4pt; color: var(--accent); }
+  h2 { font-size: 13.5pt; margin: 16pt 0 6pt; padding-bottom: 3pt; border-bottom: 1.5pt solid var(--accent); color: var(--accent); break-after: avoid; }
+  h3 { font-size: 11pt; margin: 10pt 0 4pt; break-after: avoid; }
+  p { margin: 4pt 0 6pt; text-align: justify; }
+  ul, ol { margin: 3pt 0 6pt; padding-left: 18pt; }
+  li { margin: 1pt 0; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: var(--soft); padding: 0 2pt; border-radius: 2pt; }
+  pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 8.6pt; background: var(--soft); border: 0.6pt solid var(--line); border-radius: 3pt; padding: 6pt 8pt; margin: 4pt 0 8pt; white-space: pre-wrap; break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 4pt 0 8pt; font-size: 9pt; break-inside: avoid; }
+  th, td { border: 0.6pt solid var(--line); padding: 2.5pt 5pt; text-align: left; vertical-align: top; }
+  th { background: var(--soft); font-weight: 600; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  figure { margin: 6pt 0 8pt; text-align: center; break-inside: avoid; }
+  figure img { max-width: 100%; }
+  figcaption { font-size: 8.6pt; color: var(--muted); margin-top: 2pt; }
+  .title-page { height: 255mm; display: flex; flex-direction: column; justify-content: center; break-after: page; }
+  .title-page .sub { font-size: 13pt; color: var(--muted); margin-bottom: 26pt; }
+  .meta td { border: none; padding: 2pt 10pt 2pt 0; font-size: 10.5pt; }
+  .meta td:first-child { color: var(--muted); width: 38mm; }
+  .abstract { background: var(--soft); border-left: 3pt solid var(--accent); padding: 8pt 10pt; margin-top: 22pt; font-size: 10pt; }
+  .note { font-size: 9pt; color: var(--muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
+  .page-break { break-before: page; }
+  .formula { text-align: center; margin: 5pt 0; font-family: "Cambria Math", Cambria, serif; font-size: 10.5pt; }
+</style>
+</head>
+<body>
+
+<section class="title-page">
+  <h1>mystl::vector</h1>
+  <div class="sub">C++20-də <code>std::vector</code>-un sıfırdan implementasiyası:<br>dizayn, mürəkkəblik analizi, testlər və benchmark</div>
+  <table class="meta">
+    <tr><td>Növ</td><td>Texniki hesabat (sərbəst iş)</td></tr>
+    <tr><td>Müəllif</td><td>Rahim Shikhgayibov</td></tr>
+    <tr><td>Tarix</td><td>Noyabr 2026</td></tr>
+    <tr><td>Mənbə kodu</td><td>github.com/RahimShikhgayibov/cpp-vector-from-scratch</td></tr>
+    <tr><td>Dil, kompilyator</td><td>C++20, g++ 16.2 (MinGW-w64), CMake, doctest</td></tr>
+  </table>
+  <div class="abstract">
+    <b>Xülasə.</b> Layihədə <code>std::vector</code>-un tam işlək analoqu — <code>mystl::vector&lt;T&gt;</code> — sıfırdan yazılıb.
+    İnterfeys custom allocator və <code>vector&lt;bool&gt;</code> xaric tamdır: 7 constructor, bütün giriş, iterator, tutum və
+    modifikator metodları, C++20 müqayisə operatorları. İmplementasiya beş versiyada (v1–v5) təkamül edib: hər
+    versiya əvvəlkinin konkret problemini həll edir. Düzgünlük 177 unit test, <code>std::vector</code> ilə 2 milyon
+    əməliyyatlıq differential test, 289 exception ssenarisi və 99% sətir coverage-i ilə yoxlanılıb.
+    Yeddi tədqiqat sualı ölçmə ilə cavablandırılıb: <code>push_back</code>-in amortized O(1) olduğu təsdiqlənib
+    (köçürmələr &lt; 2n), <code>noexcept</code>-in unudulması böyüməni 2 dəfə yavaşladır, linked list traversal-ı
+    vektordan 10–600 dəfə yavaşdır, <code>mystl::vector</code> isə <code>std::vector</code> ilə praktik olaraq eyni sürətdədir.
+  </div>
+</section>
+
+<h2>1. Problem və motivasiya</h2>
+<p><b>Niyə dinamik massiv?</b> Adi C++ massivinin ölçüsü kompilyasiya vaxtı sabitdir. Proqramların əksəriyyəti isə
+neçə element olacağını əvvəlcədən bilmir. Dinamik massiv elementləri <b>yaddaşda ardıcıl</b> saxlayır (O(1) indeksləmə,
+cache-dostu traversal) və lazım olduqca <b>böyüyür</b>. <code>std::vector</code> C++-da ən çox istifadə olunan konteynerdir.</p>
+<p><b>Niyə sıfırdan?</b> <code>std::vector</code>-u istifadə etmək asandır, amma onun düzgün implementasiyası C++-ın ən çətin
+mövzularını tələb edir: obyektin ömrünün əl ilə idarəsi, xam yaddaş və placement new, rule of three/five, move semantics,
+exception safety, template-lər. Layihənin məqsədi bu mövzuları işlək kodla öyrənmək və nəticəni test və ölçmə ilə sübut etməkdir.</p>
+<p><b>Tədqiqat sualları.</b> (1) <code>push_back</code> həqiqətən amortized O(1)-dirmi? (2) 2× və 1.5× böyümə faktorundan hansı
+yaxşıdır? (3) <code>reserve</code> nə qədər qazandırır? (4) Copy ilə move arasındakı fərq nədir, <code>noexcept</code> unudulanda nə baş verir?
+(5) Ortaya <code>insert</code>/<code>erase</code> praktikada nə qədər bahadır? (6) Cache-in təsiri nə qədərdir? (7) Nəticə <code>std::vector</code>-a nə qədər yaxındır?</p>
+<p><b>Əhatə.</b> <code>std::vector</code>-un bütün üzv və sərbəst funksiyaları. <b>Bilərəkdən kənarda qalanlar:</b> custom allocator
+dəstəyi və <code>vector&lt;bool&gt;</code> ixtisaslaşması.</p>
+
+<h2>2. Dizayn</h2>
+<h3>2.1. Yaddaş modeli: [qurulmuş | xam]</h3>
+<figure>
+<svg width="560" height="120" viewBox="0 0 560 120" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial" font-size="12">
+  <text x="10" y="58" fill="#1d2433">data_</text>
+  <line x1="50" y1="54" x2="92" y2="54" stroke="#1d2433" stroke-width="1.5"/>
+  <polygon points="92,49 102,54 92,59" fill="#1d2433"/>
+  <g stroke="#1d2433" stroke-width="1.2">
+    <rect x="105" y="35" width="70" height="38" fill="#cfe0f5"/>
+    <rect x="175" y="35" width="70" height="38" fill="#cfe0f5"/>
+    <rect x="245" y="35" width="70" height="38" fill="#cfe0f5"/>
+    <rect x="315" y="35" width="70" height="38" fill="#ffffff" stroke-dasharray="4 3"/>
+    <rect x="385" y="35" width="70" height="38" fill="#ffffff" stroke-dasharray="4 3"/>
+  </g>
+  <text x="128" y="59">e0</text><text x="198" y="59">e1</text><text x="268" y="59">e2</text>
+  <text x="335" y="59" fill="#8a93a3">xam</text><text x="405" y="59" fill="#8a93a3">xam</text>
+  <line x1="105" y1="85" x2="315" y2="85" stroke="#1f5fa8" stroke-width="1.5"/>
+  <text x="168" y="101" fill="#1f5fa8">size_ = 3 (qurulmuş)</text>
+  <line x1="105" y1="22" x2="455" y2="22" stroke="#5b6475" stroke-width="1.2"/>
+  <text x="235" y="15" fill="#5b6475">capacity_ = 5</text>
+</svg>
+<figcaption>Şəkil 1. Buffer-in əvvəlində <code>size_</code> canlı obyekt, qalan hissə xam (obyektsiz) yaddaşdır.</figcaption>
+</figure>
+<p>Vektor üç üzvdən ibarətdir: <code>T* data_</code>, <code>size_t size_</code>, <code>size_t capacity_</code>. Yaddaş və obyektlər
+<b>ayrı</b> idarə olunur: yaddaş <code>::operator new</code> ilə xam şəkildə alınır, obyekt yalnız element əlavə olunanda
+<code>std::construct_at</code> (placement new) ilə qurulur və silinəndə <code>std::destroy_at</code> ilə dərhal dağıdılır.
+Bu model <code>new T[n]</code>-in üç problemini həll edir: default constructor tələbi, <code>reserve</code>-in lazımsız obyektlər
+qurması və <code>pop_back</code>-in obyekti dağıda bilməməsi.</p>
+<h3>2.2. İnvariantlar</h3>
+<ol>
+  <li><code>size_ ≤ capacity_</code>;</li>
+  <li><code>capacity_ = 0 ⇒ data_ = nullptr</code>;</li>
+  <li><code>[0, size_)</code> yerlərində dəqiq <code>size_</code> canlı obyekt var, <code>[size_, capacity_)</code> xamdır;</li>
+  <li>hər vektor öz buffer-inə sahibdir: iki obyekt eyni buffer-i göstərmir.</li>
+</ol>
+<p>Hər public metod bu invariantları qoruyur. Exception halında da qorunurlar (bax 2.4).</p>
+<h3>2.3. Böyümə siyasəti</h3>
+<p>Vektor dolanda yeni capacity <code>max(Growth::next(capacity), tələb)</code> olur. <code>Growth</code> template parametridir (policy-based design):
+<code>growth::doubling</code> (2×, default, libstdc++ və libc++ kimi) və <code>growth::one_and_half</code> (1.5×, MSVC kimi). Seçim
+kompilyasiya vaxtı edilir, işləmə vaxtında xərc yoxdur. Böyümə zamanı elementlər <code>std::move_if_noexcept</code> ilə daşınır:
+move constructor <code>noexcept</code>-dirsə köçürülür, deyilsə strong guarantee üçün kopyalanır.</p>
+<h3>2.4. Exception safety</h3>
+<p>Yenidən ayırma tələb edən bütün əməliyyatlar eyni sxemə əməl edir: <b>riskli iş əvvəl, geri dönüşü olmayan iş sonda</b>.
+Yeni buffer tam hazırlanır (əvvəl yeni elementlər, sonra köhnələrin köçürülməsi), hər addımın öz <code>catch</code> bloku var.
+Köhnə buffer yalnız heç nə uğursuz ola bilməyəndə <code>noexcept</code> funksiya ilə atılır. Nəticədə <code>push_back</code>,
+<code>emplace_back</code>, <code>reserve</code>, <code>resize</code>, <code>shrink_to_fit</code>, sona <code>insert</code>, copy assignment və
+<code>assign</code> <b>strong guarantee</b> verir. Ortaya <code>insert</code>/<code>erase</code> <code>std::vector</code> kimi <b>basic guarantee</b> verir.
+Constructor-lar default constructor-a delegate edir: gövdədə exception olsa destructor çağırılır və heç nə sızmır.</p>
+<p><b>Alias təhlükəsizliyi.</b> <code>v.push_back(v[0])</code> və <code>v.insert(v.begin(), v.back())</code> kimi çağırışlarda arqument
+vektorun öz elementidir. Yeni element köhnə buffer dağıdılmamışdan və heç bir element sürüşdürülməmişdən <b>əvvəl</b> qurulur.</p>
+
+<h2>3. Təkamül: v1-dən v5-ə</h2>
+<table>
+<tr><th>Versiya</th><th>Əlavə olunan</th><th>Həll etdiyi problem</th><th>Nümayiş</th></tr>
+<tr><td>v1</td><td><code>int*</code>, <code>size</code>, <code>capacity</code>, 2× böyümə</td><td>sabit ölçülü massiv</td><td>10⁶ <code>push_back</code></td></tr>
+<tr><td>v2</td><td>copy constructor, copy assignment (copy-and-swap)</td><td>kompilyatorun shallow copy-si: asılı kopyalar və double free</td><td>Windows-da <code>0xC0000374</code> (heap corruption)</td></tr>
+<tr><td>v3</td><td><code>template &lt;typename T&gt;</code></td><td>yalnız <code>int</code></td><td><code>vector&lt;string&gt;</code>, <code>vector&lt;vector&lt;int&gt;&gt;</code></td></tr>
+<tr><td>v4</td><td><code>::operator new</code> + placement new, <code>reserve</code>, <code>pop_back</code></td><td><code>new T[]</code>-in üç problemi; <code>push_back(v[0])</code>-dakı use-after-free</td><td>Noisy çıxışlarının müqayisəsi; "zəhərli" destructor: −1 və 42</td></tr>
+<tr><td>v5</td><td>move constructor/assignment, <code>push_back(T&amp;&amp;)</code>, <code>move_if_noexcept</code></td><td>lazımsız kopyalar; yalnız köçürülə bilən tiplər</td><td><code>vector&lt;unique_ptr&lt;int&gt;&gt;</code>; <code>noexcept</code> ilə və onsuz böyümə</td></tr>
+</table>
+<p>Faza B-də interfeys tamamlandı (iterator-lar, bütün constructor-lar, <code>resize</code>, <code>insert</code>, <code>erase</code>, <code>emplace</code>,
+<code>&lt;=&gt;</code>, böyümə siyasəti). v3-dəki <code>push_back(v[0])</code> bug-ı v4-ün testi ilə tapılıb. Həmin test v3-ün kodunda
+gözlənilən 42 əvəzinə −1 qaytarırdı.</p>
+
+<h2>4. Mürəkkəblik analizi</h2>
+<table>
+<tr><th>Əməliyyat</th><th>Zaman</th><th>Qeyd</th></tr>
+<tr><td><code>operator[]</code>, <code>at</code>, <code>front</code>, <code>back</code>, <code>data</code>, iterator-lar</td><td>O(1)</td><td><code>at</code> sərhədi yoxlayır</td></tr>
+<tr><td><code>size</code>, <code>capacity</code>, <code>empty</code>, <code>max_size</code>, <code>swap</code></td><td>O(1)</td><td></td></tr>
+<tr><td><code>push_back</code>, <code>emplace_back</code></td><td>amortized O(1), ən pis O(n)</td><td>isbat: 4.1</td></tr>
+<tr><td><code>pop_back</code></td><td>O(1)</td><td>bir destructor</td></tr>
+<tr><td><code>insert</code>/<code>emplace</code> (bir element, <code>pos</code>-a)</td><td>O(n − pos) + amortized O(1)</td><td>sonda amortized O(1)</td></tr>
+<tr><td><code>insert(pos, k, value)</code>, <code>insert(pos, first, last)</code></td><td>O(k + n − pos)</td><td>sona əlavə + <code>std::rotate</code></td></tr>
+<tr><td><code>erase(pos)</code>, <code>erase(first, last)</code></td><td>O(n − pos)</td><td>sürüşdürmə + destructor-lar</td></tr>
+<tr><td><code>clear</code>, destructor</td><td>O(n)</td><td>yaddaş (<code>clear</code>-də) qalır</td></tr>
+<tr><td><code>reserve(m)</code>, <code>shrink_to_fit</code></td><td>O(n) (buffer dəyişərsə), yoxsa O(1)</td><td></td></tr>
+<tr><td><code>resize(m)</code></td><td>O(|m − n|) + yenidən ayırma</td><td></td></tr>
+<tr><td>copy constructor, copy assignment, <code>assign</code></td><td>O(n)</td><td></td></tr>
+<tr><td>move constructor</td><td>O(1)</td><td>yalnız 3 üzv dəyişir</td></tr>
+<tr><td>move assignment</td><td>O(m)</td><td>m: hədəfin köhnə elementləri dağıdılır</td></tr>
+<tr><td><code>==</code>, <code>&lt;=&gt;</code>, <code>mystl::erase</code>, <code>erase_if</code></td><td>O(n)</td><td></td></tr>
+</table>
+<p><b>Yaddaş.</b> Elementlər üçün <code>capacity · sizeof(T)</code> bayt. Boş yer 2× siyasətdə ən çoxu 50%, 1.5× siyasətdə 33%-dir
+(ölçülmüş orta: 26% və 17%). Yenidən ayırma zamanı köhnə və yeni buffer bir anda mövcuddur: müvəqqəti olaraq ~(1 + α)·n element.</p>
+
+<h3>4.1. <code>push_back</code> üçün amortized O(1) isbatı</h3>
+<p><b>Aggregate metodu.</b> Boş vektora ardıcıl <i>n</i> <code>push_back</code> edilir, böyümə faktoru α = 2. <i>i</i>-ci əməliyyatın qiyməti
+1 (yazmaq) üstəgəl, vektor dolu idisə, <i>i</i> − 1 köçürmədir. Capacity 1, 2, 4, … ardıcıllığı ilə böyüdüyü üçün köçürmələr
+yalnız <i>i</i> − 1 2-nin qüvvəti olanda baş verir:</p>
+<p class="formula">T(n) = n + Σ<sub>j=0</sub><sup>⌊log₂(n−1)⌋</sup> 2<sup>j</sup> &lt; n + 2n = 3n</p>
+<p>Deməli, əməliyyat başına qiymət T(n)/n &lt; 3, yəni O(1). Ümumi faktor α &gt; 1 üçün son capacity C &lt; α·n, köçürmələr isə
+C/α + C/α² + … &lt; C/(α − 1) &lt; α·n/(α − 1). α = 2 üçün &lt; 2n, α = 1.5 üçün &lt; 3n alınır. Ölçülən dəyərlər
+(n = 10⁷: 1.68n və 2.39n) bu hədlərə uyğundur.</p>
+<p><b>Accounting metodu.</b> Hər <code>push_back</code>-ə 3 vahid "ödəniş" yazılır: 1 vahid elementin yazılmasına sərf olunur, 2 vahid
+kredit kimi elementin üzərində saxlanılır. Capacity C-dən 2C-yə böyüyəndə buffer-in son C/2 elementi (sonuncu böyümədən sonra
+əlavə olunanlar) cəmi C vahid kredit daşıyır. Bu, bütün C elementin köçürülməsini ödəyir: hər element öz köçürməsini, həm
+də artıq krediti qalmamış birinci yarıdan bir elementin köçürməsini ödəyir. Kredit heç vaxt mənfi olmur, ona görə amortized
+qiymət ≤ 3 = O(1). <b>Əlavə etmənin həndəsi olması vacibdir:</b> capacity sabit k qədər artsaydı, köçürmələr Σ k·i ≈ n²/(2k),
+yəni O(n²) olardı.</p>
+
+<h2>5. Testlər</h2>
+<table>
+<tr><th>Səviyyə</th><th>Həcm</th><th>Nəyi tutur</th></tr>
+<tr><td>Unit testlər (doctest)</td><td class="num">177 test, 10 958 yoxlama</td><td>hər metodun məntiqi, kənar hallar</td></tr>
+<tr><td>Sayğac tipi <code>Tracked</code></td><td>bütün ömür testləri</td><td>sızma, ikiqat destructor, lazımsız kopya (Windows-da ASan əvəzi)</td></tr>
+<tr><td>Exception injection</td><td class="num">289 ssenari</td><td><code>push_back</code> və <code>reserve</code>-də hər mümkün exception nöqtəsində strong guarantee</td></tr>
+<tr><td>Differential test</td><td class="num">2 × 10 seed × 100 000</td><td><code>std::vector</code> ilə hər addımdan sonra müqayisə, 30 növ əməliyyat</td></tr>
+<tr><td>Edge case-lər</td><td class="num">15 test</td><td>boş vektor, self-assignment, alias halları, sərhədlər, moved-from</td></tr>
+<tr><td>Mutation testing</td><td class="num">6 səhv</td><td>bilərəkdən salınan hər səhvi ən azı bir test tutdu</td></tr>
+<tr><td>Coverage (gcov)</td><td class="num">99% (296/299)</td><td>qalan 3 sətir: &gt;4·10¹⁸ bayt tələb edən müdafiə yoxlamaları</td></tr>
+<tr><td>Sanitizer-lər</td><td>Windows: UBSan; Linux: ASan + UBSan</td><td>use-after-free, overflow, undefined behavior</td></tr>
+</table>
+<p><b>Test tipləri.</b> <code>int</code> (əsas məntiq), <code>std::string</code> (heap-ə sahib obyektlər; SSO-nun səhvləri gizlətməməsi üçün
+uzun sətirlər), <code>Tracked</code> (sayğac; default constructor-u yoxdur; k-cı kopyada exception ata bilir),
+<code>std::unique_ptr&lt;int&gt;</code> (yalnız köçürülə bilən), <code>Poisoned</code> (destructor dəyəri pozur, use-after-free-ni
+ASan-sız göstərir), <code>alignas(64)</code> tip (hizalama).</p>
+<p><b>Testlərin tapdığı səhvlər.</b> v3-də <code>push_back(v[0])</code> zamanı use-after-free; izahlarda amortized hədd üçün səhv iddia
+("n-dən az köçürmə" yalnız n = 2<sup>k</sup> üçün doğrudur, düzgün hədd 2n-dir); test kodunun özündə <code>==</code>-in hesablanma
+sırasından asılı etibarsız iterator müqayisəsi.</p>
+<p><b>Sanitizer nəticəsi.</b> Windows MinGW-də ASan kitabxanası olmadığı üçün bütün Debug build-lər UBSan (trap rejimi) ilə
+işləyir. Linux-da (Docker, g++ 14.4) bütün unit testlər və differential test <code>-fsanitize=address,undefined</code> ilə
+<b>təmiz</b> keçib. Nəzarət üçün bilərəkdən səhv yazılmış iki proqram da işə salınıb. ASan ikisini də tutub
+(<code>detected memory leaks</code>, <code>attempting double-free</code>), deməli həqiqətən işləyir. Hər iki kompilyatorda
+(g++ 16.2 və 14.4) <code>-Wall -Wextra -Wpedantic</code> ilə warning yoxdur.</p>
+
+<h2 class="page-break">6. Benchmark nəticələri</h2>
+<p><b>Metodologiya.</b> Release build (<code>-O2</code>), <code>std::chrono::steady_clock</code>, 1 ısınma + 9 təkrar, median.
+Nəticələr <code>g_sink</code>-ə yığılır, kompilyator kodu silə bilmir. n = 10³…10⁷ (onluq başına 1, 2, 5). Hər ölçmədə
+<code>std::vector</code> (libstdc++) müqayisə xəttidir. <b>Avadanlıq:</b> AMD Ryzen 7 PRO 5850U (8 nüvə, L2 512 KB/nüvə, L3 16 MB),
+31 GB RAM, Windows 11 Pro 23H2, g++ 16.2.0. Ölçmələr noutbukda, CPU tezliyi sabitlənmədən aparılıb. Tək nöqtədə ±20–30% səs-küy
+ola bilər, ona görə nəticələr trendlərə əsasən şərh olunur.</p>
+
+<div class="two">
+<figure><img src="../benchmark/q1.png" alt="q1"><figcaption>Şəkil 2. Sual 1: əməliyyat başına vaxt və köçürmə/n.</figcaption></figure>
+<figure><img src="../benchmark/q4.png" alt="q4"><figcaption>Şəkil 3. Sual 4: <code>noexcept</code>-in və copy/move-un təsiri.</figcaption></figure>
+</div>
+<p><b>1. Amortized O(1).</b> Təsdiqləndi. n 10 000 dəfə artanda <code>push_back</code> vaxtı 1–5 ns aralığında qalır, köçürmə sayı
+həmişə &lt; 2n-dir (n = 10⁷: 1.68n). <code>std::vector</code>-un köçürmə sayı bizimki ilə tam eynidir.</p>
+<p><b>2. 2× və 1.5×.</b> Trade-off. 2× təxminən 20–35% sürətlidir (n = 10⁷: 25 və 41 yenidən ayırma). 1.5× daha az yaddaş itirir
+(orta boş yer 17% və 26%, ən pis hal 33% və 50%).</p>
+<p><b>3. <code>reserve</code>.</b> 1.8–14× qazanc. Ən böyüyü orta ölçülərdədir (10⁵: 9.5×). Böyük n-də darboğaz yaddaşın özü olur.</p>
+<p><b>4. Copy/move, <code>noexcept</code>.</b> Sətirlər üçün köçürmə kopyadan ~2.5× ucuzdur. Move constructor-da <code>noexcept</code>
+unudulanda böyümə zamanı elementlər kopyalanır və vektor <b>~2 dəfə yavaşlayır</b> (109 → 207 ns/op). <code>std::vector</code>-da da eynidir.</p>
+
+<div class="two">
+<figure><img src="../benchmark/q5.png" alt="q5"><figcaption>Şəkil 4. Sual 5: mövqeyə görə <code>insert</code>/<code>erase</code>.</figcaption></figure>
+<figure><img src="../benchmark/q6.png" alt="q6"><figcaption>Şəkil 5. Sual 6: vector və linked list traversal-ı.</figcaption></figure>
+</div>
+<p><b>5. Ortaya <code>insert</code>/<code>erase</code>.</b> O(n): log-log qrafikdə düz xətt. Orta əvvəlin yarısıdır. n = 10⁷-də əvvələ bir
+<code>insert</code> ~3.8 ms çəkir, sona isə ~20 ns.</p>
+<p><b>6. Cache.</b> İkisi də O(n), amma vektor ~0.2 ns/element, ardıcıl düyünlü list ~2–8 ns, qarışıq düyünlü list ~127 ns-dir
+(<b>500–600×</b>). Qarışıq list-də L3 (16 MB) dolanda (~5·10⁵ düyün) kəskin sıçrayış görünür: hər addım RAM-a müraciət olur.</p>
+
+<figure><img src="../benchmark/q7.png" alt="q7" style="max-width: 78%"><figcaption>Şəkil 6. Sual 7: mystl/std vaxt nisbəti (n ≥ 10⁴, həndəsi orta, min–max).</figcaption></figure>
+<p><b>7. <code>std::vector</code>-a yaxınlıq.</b> 8 əməliyyatdan 7-sində nisbət 0.84–1.04-dür (səs-küy səviyyəsində). <code>emplace_back</code>
+(<code>string</code>) ardıcıl olaraq ~10% yavaşdır (1.05–1.27). Ehtimal olunan səbəb böyümə yolunun daha az optimallaşdırılmasıdır
+(profiler ilə araşdırılmayıb). İlk cəhddə tək n = 10⁶ nöqtəsi götürülmüş və bəzi əməliyyatlar 1.3× yavaş görünmüşdü. Bu,
+metodun çox nöqtənin həndəsi ortasına dəyişdirilməsinə səbəb oldu.</p>
+
+<h2>7. Trade-off-lar və məhdudiyyətlər</h2>
+<ul>
+  <li><b>Əhatə xaricində:</b> custom allocator (<code>std::allocator_traits</code>) və <code>vector&lt;bool&gt;</code>.</li>
+  <li><b><code>assign</code></b> həmişə yeni buffer ayırır ("qur, sonra swap"). <code>std::vector</code> isə yetərli buffer-i təkrar istifadə edir.
+      Qazanc: strong guarantee və <code>v.assign(v.begin(), v.end())</code>-in təhlükəsizliyi (<code>std::vector</code>-da bu UB-dir).</li>
+  <li><b>Aralıq <code>insert</code></b> sona əlavə + <code>std::rotate</code> ilə işləyir: sadədir və alias-a qarşı təhlükəsizdir,
+      amma ən optimal alqoritmdən bir az çox köçürmə edir.</li>
+  <li><b>Iterator-lar adi pointer-dir:</b> debug rejimində etibarsız iterator yoxlaması yoxdur.</li>
+  <li><b>Böyümə siyasəti template parametridir:</b> fərqli siyasətli vektorlar fərqli tiplərdir və bir-birinə mənimsədilə bilmir.</li>
+  <li><b>Performans:</b> <code>emplace_back(string)</code> böyümə yolunda ~10% yavaşlıq var. Araşdırılması gələcək işdir.</li>
+  <li><b>Ölçmə şəraiti:</b> noutbuk, sabitlənməmiş CPU tezliyi. Nəticələr trend səviyyəsində etibarlıdır, tək nöqtə səviyyəsində yox.</li>
+  <li><b>Sanitizer:</b> ASan Windows-da (MinGW) əlçatan deyil. Tam yaddaş yoxlaması ayrıca Linux-da (Docker) aparılır, gündəlik inkişafda isə sayğac tipi ilə əvəz olunur.</li>
+</ul>
+
+<h2>8. Nəticə</h2>
+<p><code>std::vector</code>-un tam interfeysi (allocator və <code>vector&lt;bool&gt;</code> xaric) C++20-də sıfırdan implementasiya olunub.
+Beş versiyalıq təkamül hər mühüm C++ anlayışını (obyektin ömrü, rule of three/five, template, xam yaddaş, move semantics)
+konkret problem üzərində göstərir. Düzgünlük çoxsəviyyəli testlə yoxlanılıb: unit, sayğac, exception injection, differential,
+mutation və coverage. Ölçmələr nəzəriyyəni təsdiqləyir (amortized O(1), köçürmələr &lt; 2n). Praktik nəticələr isə göstərir ki,
+asimptotik mürəkkəblik bütün mənzərəni vermir: eyni O(n) traversal-da cache 600 dəfəyə qədər fərq yaradır, bir unudulmuş
+<code>noexcept</code> isə vektoru 2 dəfə yavaşladır. Nəticədə <code>mystl::vector</code> <code>std::vector</code> ilə praktik olaraq eyni sürətdədir.</p>
+
+<h2>İstinadlar</h2>
+<ol>
+  <li>T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein. <i>Introduction to Algorithms</i>, 4-cü nəşr. MIT Press, 2022. Fəsil 16: Amortized Analysis (dynamic tables).</li>
+  <li>B. Stroustrup. <i>A Tour of C++</i>, 3-cü nəşr. Addison-Wesley, 2022.</li>
+  <li>S. Meyers. <i>Effective Modern C++</i>. O'Reilly, 2014. Move semantics, <code>noexcept</code>, perfect forwarding.</li>
+  <li>cppreference.com: <code>std::vector</code>, <code>std::construct_at</code>, <code>std::move_if_noexcept</code>, iterator invalidation.</li>
+  <li>learncpp.com: classes, dynamic memory, copy/move semantics, templates.</li>
+  <li>GCC libstdc++ mənbə kodu: <code>bits/stl_vector.h</code> (öz versiyanı yazdıqdan sonra müqayisə üçün).</li>
+  <li>doctest test framework, v2.4.11: github.com/doctest/doctest.</li>
+</ol>
+
+</body>
+</html>

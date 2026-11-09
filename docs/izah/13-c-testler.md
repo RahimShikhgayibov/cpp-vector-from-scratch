@@ -178,13 +178,46 @@ Testlər yalnız "keçmək" üçün yazılmayıb, layihə boyunca real səhvlər
 | Platforma | Sanitizer | Vəziyyət |
 |---|---|---|
 | Windows (MinGW g++ 16.2) | UBSan, trap rejimi (`-fsanitize=undefined -fsanitize-trap=all`) | ✅ bütün Debug build-lər bununla işləyir, 177 unit test + differential test keçir |
-| Linux | ASan + UBSan (`-fsanitize=address,undefined`) | ⏳ Linux mühiti lazımdır: Docker və ya WSL Ubuntu |
+| Linux (Docker, `gcc:14`, g++ 14.4.0) | ASan + UBSan + LeakSanitizer (`-fsanitize=address,undefined`) | ✅ **təmiz** |
 
-Windows-da ASan olmadığı üçün onun əsas işini indiyədək başqa vasitələr görürdü:
+Windows-da ASan olmadığı üçün onun əsas işini əvvəlcə başqa vasitələr görürdü:
 - **sızma və ikiqat destructor:** `Tracked::live()` sayğacı;
 - **use-after-free:** `Poisoned` tipi (destructor dəyəri pozur).
 
-Amma bu vasitələr ASan-ı tam **əvəz etmir**: ASan hər yaddaş müraciətini yoxlayır, sayğac isə yalnız obyektlərin sayını izləyir. Ona görə yol xəritəsinin "ASan təmizdir" şərti Linux-da yoxlanmalıdır.
+Amma bu vasitələr ASan-ı tam **əvəz etmir**: ASan hər yaddaş müraciətini yoxlayır, sayğac isə yalnız obyektlərin sayını izləyir. Ona görə yol xəritəsinin "ASan təmizdir" şərti Linux-da yoxlanıldı.
+
+### Linux-da ASan: necə və nə alındı
+
+```
+docker run --rm --cap-add=SYS_PTRACE -v "${PWD}:/src" -w /src gcc:14 bash scripts/asan_linux.sh
+```
+
+[`scripts/asan_linux.sh`](../../scripts/asan_linux.sh) bütün testləri `-O0 -g -fsanitize=address,undefined -fno-sanitize-recover=all` ilə kompilyasiya edib işə salır. `-fno-sanitize-recover=all` olduğu üçün ilk xətada proqram dayanır və test uğursuz sayılır. Həqiqi çıxış:
+
+```
+=== g++ (GCC) 14.4.0
+=== unit tests
+[doctest] test cases:   177 |   177 passed | 0 failed | 0 skipped
+[doctest] assertions: 10958 | 10958 passed | 0 failed |
+=== differential test (10 seeds x 100000 steps)
+[doctest] test cases:      2 |      2 passed | 0 failed | 0 skipped
+[doctest] assertions: 785606 | 785606 passed | 0 failed |
+=== experiments that must be clean (a4, a5)
+a4_raw_memory: clean
+a5_move_semantics: clean
+=== experiments with intentional bugs (ASan must report them)
+a0_noisy (new without delete): LeakSanitizer: detected memory leaks
+a2_shallow_copy (shallow copy): AddressSanitizer: attempting double-free
+=== RESULT: all sanitizer checks passed
+```
+
+**Nəzarət yoxlaması (positive control):** sanitizer heç nə tapmayanda iki izah mümkündür: ya kod təmizdir, ya da sanitizer işləmir. Bunu ayırd etmək üçün **bilərəkdən səhv** olan iki təcrübə proqramı da işə salınır:
+- A0-dakı `delete`-siz `new` → `LeakSanitizer: detected memory leaks`;
+- A2-dəki shallow copy → `AddressSanitizer: attempting double-free`.
+
+İkisi də tutuldu, deməli sanitizer həqiqətən işləyir. Testlərin təmiz çıxması da etibarlıdır.
+
+**İkinci kompilyator:** GCC 14.4 ilə bütün mənbə faylları `-Wall -Wextra -Wpedantic` ilə **0 warning** verir. Windows-dakı GCC 16.2 ilə də 0 warning var.
 
 ## 10. Müdafiədə gələ biləcək suallar
 
@@ -194,8 +227,8 @@ Mutation testing ilə: koda bilərəkdən 6 fərqli səhv salındı və hər bir
 **Differential test nədir və niyə lazımdır?**
 Eyni təsadüfi əməliyyatları bizim vektorda və `std::vector`-da icra edib hər addımdan sonra nəticələri müqayisə etmək. Əl ilə ağla gəlməyən ardıcıllıqları yoxlayır. 10 seed × 100 000 addım × 2 tip = 2 milyon əməliyyat, hamısı uyğun gəlir.
 
-**ASan olmadan yaddaş sızmasını necə yoxladınız?**
-Hər obyektin constructor və destructor çağırışlarını sayan test tipi ilə. Hər testin sonunda canlı obyektlərin sayı 0 olmalıdır. Use-after-free üçün isə destructor-u dəyəri pozan tip istifadə olunub. Tam yoxlama Linux-da ASan ilə edilir.
+**Yaddaş səhvlərinin olmadığını necə bilirsiniz?**
+İki səviyyədə yoxlanılıb. Windows-da (ASan yoxdur) obyektləri sayan test tipi var: hər testin sonunda canlı obyektlərin sayı 0 olmalıdır. Linux-da isə bütün testlər və differential test AddressSanitizer + LeakSanitizer + UBSan ilə təmiz keçir. Sanitizer-in həqiqətən işlədiyi bilərəkdən səhv yazılmış iki proqramla yoxlanılıb: ikisini də tutdu.
 
 **Exception safety-ni necə test etdiniz?**
 Test tipinin copy constructor-u istənilən k-cı çağırışda exception atır. `push_back` və `reserve` üçün hər mümkün k yoxlanılır: cəmi 289 ssenari. Hər birindən sonra vektor dəyişməyib və sızma yoxdur.

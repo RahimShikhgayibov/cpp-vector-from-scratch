@@ -31,8 +31,9 @@ mystl::vector<int, mystl::growth::one_and_half> w;   // 1.5× böyümə siyasət
 | B5 | Müqayisə operatorları, `swap(a, b)` | ✅ |
 | B6 | Growth policy, iterator invalidation cədvəli | ✅ |
 | C | Testlər, differential test, coverage | ✅ |
-| C | ASan + UBSan Linux-da | ⏳ |
+| C | ASan + UBSan Linux-da (Docker, g++ 14.4): təmiz | ✅ |
 | D | Benchmark və 7 tədqiqat sualı | ✅ |
+| E | Hesabat, təqdimat, layihə təklifi ([təhvil siyahısı](docs/TEHVIL.md)) | ✅ |
 
 ## İnterfeys
 
@@ -110,7 +111,18 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 
 **Testlər:** 177 unit test (`build/debug/tests.exe`) və `std::vector` ilə müqayisə edən differential test (`build/debug/differential.exe`: 2 tip × 10 seed × 100 000 təsadüfi əməliyyat). `vector.hpp`-nin sətir coverage-i 99%-dir (`scripts/coverage.ps1`).
 
-**Sanitizer-lər:** Linux-da Debug build `-fsanitize=address,undefined` ilə işləyir. Windows MinGW-də ASan yoxdur, orada yalnız UBSan (trap rejimi) qoşulur. Tam yoxlama üçün WSL istifadə edin.
+**Sanitizer-lər:** Linux-da Debug build `-fsanitize=address,undefined` ilə işləyir. Windows MinGW-də ASan yoxdur, orada yalnız UBSan (trap rejimi) qoşulur. Windows-dan tam yoxlama Docker ilə edilir:
+
+```
+docker run --rm --cap-add=SYS_PTRACE -v "${PWD}:/src" -w /src gcc:14 bash scripts/asan_linux.sh
+```
+
+## Sənədlər
+
+- [Texniki hesabat (PDF)](docs/report/hesabat.pdf)
+- [Təqdimat (PDF)](docs/report/teqdimat.pdf)
+- [Layihə təklifi (PDF)](docs/report/layihe-teklifi.pdf)
+- [Təhvil siyahısı və test input-ları](docs/TEHVIL.md)
 
 ## İzahlar
 
