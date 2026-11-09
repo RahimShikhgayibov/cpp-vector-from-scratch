@@ -2,8 +2,10 @@
 
 **Fayllar:**
 - [`experiments/a2_shallow_copy.cpp`](../../experiments/a2_shallow_copy.cpp): problemin nümayişi
-- [`include/mystl/int_vector.hpp`](../../include/mystl/int_vector.hpp): həlli
-- [`tests/test_int_vector_copy.cpp`](../../tests/test_int_vector_copy.cpp): testlər
+- [`include/mystl/int_vector.hpp`](https://github.com/RahimShikhgayibov/cpp-vector-from-scratch/blob/b8d27b531c54266742230fe602de57e5f61ed1dc/include/mystl/int_vector.hpp): həlli (A2 commit-indəki vəziyyət)
+- [`tests/test_int_vector_copy.cpp`](https://github.com/RahimShikhgayibov/cpp-vector-from-scratch/blob/b8d27b531c54266742230fe602de57e5f61ed1dc/tests/test_int_vector_copy.cpp): testlər
+
+> A3-də bu fayllar `vector.hpp` və `test_vector_copy.cpp` adı ilə template-ə çevrildi. Linklər v2-nin olduğu commit-ə aparır.
 
 ## 1. Problem: kompilyatorun yaratdığı copy constructor
 

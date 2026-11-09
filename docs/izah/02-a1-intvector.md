@@ -1,6 +1,8 @@
 # A1: v1 — `IntVector`
 
-**Fayllar:** [`include/mystl/int_vector.hpp`](../../include/mystl/int_vector.hpp), [`tests/test_int_vector.cpp`](../../tests/test_int_vector.cpp)
+**Fayllar (A1 commit-indəki vəziyyət):** [`include/mystl/int_vector.hpp`](https://github.com/RahimShikhgayibov/cpp-vector-from-scratch/blob/2ae0fe248dc8ec80d6ffdf43f9afc9953fad5baf/include/mystl/int_vector.hpp), [`tests/test_int_vector.cpp`](https://github.com/RahimShikhgayibov/cpp-vector-from-scratch/blob/2ae0fe248dc8ec80d6ffdf43f9afc9953fad5baf/tests/test_int_vector.cpp)
+
+> A3-də bu fayllar `vector.hpp` və `test_vector.cpp` adı ilə template-ə çevrildi. Linklər v1-in olduğu commit-ə aparır.
 
 ## 1. Problem
 

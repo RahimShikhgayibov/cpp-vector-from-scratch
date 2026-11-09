@@ -18,7 +18,7 @@ DSA FF/
 └── .gitignore
 ```
 
-**Niyə `include/mystl/`, sadəcə `include/` yox?** Testdə `#include <mystl/int_vector.hpp>` yazırıq. `mystl/` prefiksi adların toqquşmasının qarşısını alır. Məsələn, başqa kitabxanada da `vector.hpp` ola bilər. `std::` namespace-i kimi, bizim kodumuz da `mystl::` namespace-indədir.
+**Niyə `include/mystl/`, sadəcə `include/` yox?** Testdə `#include <mystl/vector.hpp>` yazırıq. `mystl/` prefiksi adların toqquşmasının qarşısını alır. Məsələn, başqa kitabxanada da `vector.hpp` ola bilər. `std::` namespace-i kimi, bizim kodumuz da `mystl::` namespace-indədir.
 
 ## 2. CMake nədir?
 

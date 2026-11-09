@@ -10,7 +10,7 @@ C++20-də `std::vector`-un tam işlək analoqu. Layihə testlər, sanitizer-lər
 | A0 | Obyektin ömrü: `Noisy` təcrübəsi | ✅ |
 | A1 | v1: `IntVector` | ✅ |
 | A2 | v2: kopyalama, rule of three | ✅ |
-| A3 | v3: template `mystl::vector<T>` | ⏳ |
+| A3 | v3: template `mystl::vector<T>` | ✅ |
 | A4 | v4: xam yaddaş, placement new | ⏳ |
 | A5 | v5: move semantics, rule of five | ⏳ |
 | B | Tam interfeys | ⏳ |
@@ -48,3 +48,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [A0: obyektin ömrü](docs/izah/01-a0-obyektin-omru.md)
 - [A1: IntVector](docs/izah/02-a1-intvector.md)
 - [A2: kopyalama və rule of three](docs/izah/03-a2-rule-of-three.md)
+- [A3: template](docs/izah/04-a3-template.md)
