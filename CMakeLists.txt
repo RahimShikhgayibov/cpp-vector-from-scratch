@@ -47,6 +47,7 @@ add_executable(tests
   tests/test_vector_copy.cpp
   tests/test_vector_lifetime.cpp
   tests/test_vector_move.cpp
+  tests/test_vector_access.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)

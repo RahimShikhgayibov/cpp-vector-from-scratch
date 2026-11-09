@@ -1,10 +1,13 @@
 #pragma once
 
-#include <cstddef>  // std::size_t
-#include <limits>   // std::numeric_limits
-#include <memory>   // std::construct_at, std::destroy_at, std::destroy_n, std::uninitialized_copy_n
-#include <new>      // ::operator new, std::align_val_t, std::bad_array_new_length
-#include <utility>  // std::move, std::forward, std::exchange, std::move_if_noexcept, std::swap
+#include <cstddef>    // std::size_t, std::ptrdiff_t
+#include <iterator>   // std::reverse_iterator
+#include <limits>     // std::numeric_limits
+#include <memory>     // std::construct_at, std::destroy_at, std::destroy_n, std::uninitialized_copy_n
+#include <new>        // ::operator new, std::align_val_t, std::bad_array_new_length
+#include <stdexcept>  // std::out_of_range
+#include <string>     // std::to_string
+#include <utility>    // std::move, std::forward, std::exchange, std::move_if_noexcept, std::swap
 
 namespace mystl {
 
@@ -33,8 +36,18 @@ class vector {
 public:
     using value_type = T;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
     using reference = T&;
     using const_reference = const T&;
+    using pointer = T*;
+    using const_pointer = const T*;
+
+    // Elementlər yaddaşda ardıcıl durduğu üçün adi pointer tam hüquqlu
+    // iterator-dur (contiguous iterator): ++, --, +n, -n, [], müqayisə.
+    using iterator = T*;
+    using const_iterator = const T*;
+    using reverse_iterator = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     vector() = default;
 
@@ -116,13 +129,65 @@ public:
         replace_buffer(new_data, new_capacity);
     }
 
+    // --- B1: Elementə giriş -----------------------------------------------------
+
+    // Sərhəd yoxlanmır: index >= size() undefined behavior-dur ("narrow contract").
     reference operator[](size_type index) { return data_[index]; }
     const_reference operator[](size_type index) const { return data_[index]; }
 
-    size_type size() const { return size_; }
-    size_type capacity() const { return capacity_; }
+    // Sərhəd yoxlanır: index >= size() olarsa std::out_of_range atır ("wide contract").
+    reference at(size_type index) {
+        check_index(index);
+        return data_[index];
+    }
+    const_reference at(size_type index) const {
+        check_index(index);
+        return data_[index];
+    }
+
+    // Boş vektorda front()/back() undefined behavior-dur (std::vector-da da belədir).
+    reference front() { return data_[0]; }
+    const_reference front() const { return data_[0]; }
+    reference back() { return data_[size_ - 1]; }
+    const_reference back() const { return data_[size_ - 1]; }
+
+    // Buffer-in başlanğıcı. C funksiyalarına massiv kimi ötürmək üçün.
+    // Boş vektorda nullptr ola bilər.
+    pointer data() noexcept { return data_; }
+    const_pointer data() const noexcept { return data_; }
+
+    // --- B1: Iterator-lar ------------------------------------------------------
+
+    iterator begin() noexcept { return data_; }
+    const_iterator begin() const noexcept { return data_; }
+    iterator end() noexcept { return data_ + size_; }
+    const_iterator end() const noexcept { return data_ + size_; }
+
+    const_iterator cbegin() const noexcept { return begin(); }
+    const_iterator cend() const noexcept { return end(); }
+
+    // rbegin() end()-də "dayanır", amma *rbegin() son elementi (end() - 1) qaytarır.
+    reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
+
+    const_reverse_iterator crbegin() const noexcept { return rbegin(); }
+    const_reverse_iterator crend() const noexcept { return rend(); }
+
+    // --- Tutum ---------------------------------------------------------------
+
+    size_type size() const noexcept { return size_; }
+    size_type capacity() const noexcept { return capacity_; }
 
 private:
+    void check_index(size_type index) const {
+        if (index >= size_) {
+            throw std::out_of_range("mystl::vector::at: index " + std::to_string(index) +
+                                    " >= size " + std::to_string(size_));
+        }
+    }
+
     // --- Element əlavə etmək -------------------------------------------------
 
     // Hər iki push_back-in ortaq kodu. U&& burada "forwarding reference"-dir:
