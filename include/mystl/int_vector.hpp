@@ -1,10 +1,11 @@
 #pragma once
 
 #include <cstddef>  // std::size_t
+#include <utility>  // std::swap
 
 namespace mystl {
 
-// v1: yalnız int saxlayan dinamik massiv.
+// v2: yalnız int saxlayan dinamik massiv + düzgün kopyalama (rule of three).
 //
 // Yaddaş şəkli (size = 3, capacity = 4):
 //
@@ -17,17 +18,49 @@ namespace mystl {
 //   size_ <= capacity_
 //   capacity_ == 0  =>  data_ == nullptr
 //   data_[0 .. size_-1] istifadəçinin əlavə etdiyi elementlərdir
+//   hər IntVector öz massivinə SAHİBDİR: iki obyekt eyni data_-nı göstərmir
 //
-// DİQQƏT: bu versiyada copy constructor və copy assignment YOXDUR.
-// `IntVector b = a;` yazsan, hər iki obyekt eyni yaddaşı göstərəcək və
-// ikisinin də destructor-u onu silməyə çalışacaq (double free).
-// Bu problem A2-də (rule of three) həll olunur.
+// Rule of three: sinif resursu (heap yaddaşı) özü idarə edirsə, bu üçünü
+// özü yazmalıdır: destructor, copy constructor, copy assignment.
 class IntVector {
 public:
     IntVector() = default;
 
+    // (1) Destructor: sahib olduğu massivi qaytarır.
     ~IntVector() {
         delete[] data_;  // nullptr-i silmək təhlükəsizdir, heç nə etmir
+    }
+
+    // (2) Copy constructor: YENİ obyekti başqasının kopyası kimi qurur.
+    //     `IntVector b = a;` və ya `IntVector b(a);` yazanda çağırılır.
+    //     Deep copy: pointer-i yox, massivin ÖZÜNÜ kopyalayır.
+    IntVector(const IntVector& other)
+        : data_(other.size_ == 0 ? nullptr : new int[other.size_]),
+          size_(other.size_),
+          capacity_(other.size_) {  // kopya artıq yer saxlamır: capacity == size
+        for (std::size_t i = 0; i < size_; ++i) {
+            data_[i] = other.data_[i];
+        }
+    }
+
+    // (3) Copy assignment: ARTIQ MÖVCUD obyektə başqasının dəyərini verir.
+    //     `a = b;` yazanda çağırılır. Copy-and-swap üsulu:
+    //       1. other-in kopyasını müvəqqəti obyektdə qur (copy constructor ilə)
+    //       2. öz məzmununu müvəqqəti obyektlə dəyiş
+    //       3. funksiyadan çıxanda müvəqqəti obyekt KÖHNƏ məzmunu özü ilə silir
+    //     Self-assignment (a = a) da təhlükəsizdir: əvvəl kopya alınır.
+    IntVector& operator=(const IntVector& other) {
+        IntVector copy(other);  // new burada exception atsa, *this toxunulmaz qalır
+        swap(copy);
+        return *this;           // a = b = c zəncirini mümkün edir
+    }
+
+    // İki vektorun məzmununu dəyişir. Yalnız 3 üzv dəyişir, element kopyalanmır:
+    // O(1) və heç vaxt exception atmır (noexcept).
+    void swap(IntVector& other) noexcept {
+        std::swap(data_, other.data_);
+        std::swap(size_, other.size_);
+        std::swap(capacity_, other.capacity_);
     }
 
     void push_back(int value) {

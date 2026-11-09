@@ -44,6 +44,7 @@ enable_testing()
 add_executable(tests
   tests/test_main.cpp
   tests/test_int_vector.cpp
+  tests/test_int_vector_copy.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
@@ -51,3 +52,7 @@ add_test(NAME tests COMMAND tests)
 # --- Təcrübələr (Faza A-nın kiçik proqramları) -------------------------------
 add_executable(a0_noisy experiments/a0_noisy.cpp)
 target_link_libraries(a0_noisy PRIVATE mystl_warnings mystl_sanitizers)
+
+# DİQQƏT: bu proqram bilərəkdən double free edir (A2-nin nümayişi)
+add_executable(a2_shallow_copy experiments/a2_shallow_copy.cpp)
+target_link_libraries(a2_shallow_copy PRIVATE mystl_warnings mystl_sanitizers)
