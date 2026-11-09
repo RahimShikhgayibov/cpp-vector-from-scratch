@@ -53,9 +53,15 @@ add_executable(tests
   tests/test_vector_modifiers.cpp
   tests/test_vector_compare.cpp
   tests/test_vector_professional.cpp
+  tests/test_edge_cases.cpp
 )
 target_link_libraries(tests PRIVATE mystl mystl_warnings mystl_sanitizers)
 add_test(NAME tests COMMAND tests)
+
+# Faza C: differential test (std::vector ilə müqayisə). Uzun çəkdiyi üçün ayrıca proqramdır.
+add_executable(differential tests/differential.cpp)
+target_link_libraries(differential PRIVATE mystl mystl_warnings mystl_sanitizers)
+add_test(NAME differential COMMAND differential)
 
 # --- Təcrübələr (Faza A-nın kiçik proqramları) -------------------------------
 add_executable(a0_noisy experiments/a0_noisy.cpp)

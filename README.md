@@ -30,7 +30,8 @@ mystl::vector<int, mystl::growth::one_and_half> w;   // 1.5× böyümə siyasət
 | B4 | Modifikatorlar: `emplace`, `insert`, `erase` | ✅ |
 | B5 | Müqayisə operatorları, `swap(a, b)` | ✅ |
 | B6 | Growth policy, iterator invalidation cədvəli | ✅ |
-| C | Testlər, differential test, sanitizer-lər | ⏳ |
+| C | Testlər, differential test, coverage | ✅ |
+| C | ASan + UBSan Linux-da | ⏳ |
 | D | Benchmark və 7 tədqiqat sualı | ⏳ |
 
 ## İnterfeys
@@ -94,6 +95,8 @@ ctest --preset debug
 
 Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 
+**Testlər:** 177 unit test (`build/debug/tests.exe`) və `std::vector` ilə müqayisə edən differential test (`build/debug/differential.exe`: 2 tip × 10 seed × 100 000 təsadüfi əməliyyat). `vector.hpp`-nin sətir coverage-i 99%-dir (`scripts/coverage.ps1`).
+
 **Sanitizer-lər:** Linux-da Debug build `-fsanitize=address,undefined` ilə işləyir. Windows MinGW-də ASan yoxdur, orada yalnız UBSan (trap rejimi) qoşulur. Tam yoxlama üçün WSL istifadə edin.
 
 ## İzahlar
@@ -111,3 +114,4 @@ Benchmark üçün `release` preset-i (`-O2`, sanitizer-siz) istifadə olunur.
 - [B4: modifikatorlar](docs/izah/10-b4-modifikatorlar.md)
 - [B5: müqayisə və ümumi funksiyalar](docs/izah/11-b5-muqayise.md)
 - [B6: peşəkar səviyyə](docs/izah/12-b6-pesekar-seviyye.md)
+- [Faza C: testlər](docs/izah/13-c-testler.md)
