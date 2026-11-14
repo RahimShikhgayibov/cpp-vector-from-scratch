@@ -244,6 +244,48 @@ Tam ölçmə bu kompüterdə ~65 saniyə çəkir. `--quick` rejimi n ≤ 10⁵ i
 
 ---
 
+## Sual 8 (əlavə): Array və Dynamic Array: əlavə, silmə, axtarış
+
+![q8](../benchmark/q8.png)
+
+**Niyə əlavə olunub?** Bu sual kursun "Array və Dynamic Array" mövzusu üçündür: əlavə, silmə və axtarış vaxtını müxtəlif həcmlərdə ölçüb müqayisə etmək.
+
+**Necə ölçülüb:** iki struktur müqayisə olunur.
+- **Array** (`FixedArray`, [`bench/benchmarks.cpp`](../../bench/benchmarks.cpp)): tutumu yaradılanda **bir dəfə** verilir və heç vaxt böyümür. Ortaya əlavə və silmə əl ilə sürüşdürmə ilə yazılıb. Doludursa, əlavə mümkün deyil.
+- **Dynamic Array**: `mystl::vector<int>`, özü böyüyür.
+
+Hər `n` üçün (10³…10⁷) beş əməliyyat ölçülüb:
+1. **doldurmaq:** sona `n` element (dynamic array həm `reserve` ilə, həm onsuz);
+2. **ortaya əlavə;**
+3. **ortadan silmə;**
+4. **xətti axtarış:** `std::find`, təsadüfi açarlar (seed 7);
+5. **binar axtarış:** `std::binary_search`, elementlər sıralıdır.
+
+**Nəticə:**
+
+| n | əməliyyat | Array | Dynamic Array | Dynamic Array + `reserve` |
+|---|---|---|---|---|
+| 1 000 | doldurmaq (ns/element) | 0.70 | 1.60 | 0.50 |
+| 100 000 | doldurmaq (ns/element) | 0.78 | **3.77** | 0.61 |
+| 10 000 000 | doldurmaq (ns/element) | 1.00 | **2.32** | 0.89 |
+| 100 000 | ortaya əlavə | 4.3 μs | 3.8 μs | – |
+| 100 000 | ortadan silmə | 3.0 μs | 3.2 μs | – |
+| 100 000 | xətti axtarış | 15.7 μs | 12.1 μs | – |
+| 100 000 | binar axtarış | 95 ns | 71 ns | – |
+| 10 000 000 | ortaya əlavə | 1.74 ms | 1.55 ms | – |
+| 10 000 000 | xətti axtarış | 1.19 ms | 1.03 ms | – |
+| 10 000 000 | binar axtarış | 215 ns | 195 ns | – |
+
+**Şərh:**
+- **Əlavə, silmə və axtarışın qiyməti eynidir.** Qrafikdə xətlər üst-üstə düşür. Səbəb: hər iki strukturda elementlər **ardıcıl yaddaşdadır**. Ortaya əlavə və silmə hər ikisində eyni sürüşdürməni (O(n)), axtarış isə eyni keçidi edir. Kiçik fərqlər (±10–25%) ölçmənin səs-küyüdür.
+- **Mürəkkəbliklər nəzəriyyəyə uyğundur:** ortaya əlavə və silmə O(n) (log-log qrafikdə düz xətt), xətti axtarış O(n), binar axtarış O(log n): `n` 10 000 dəfə artanda vaxt cəmi ~5 dəfə artır (43 ns → 215 ns).
+- **Yeganə fərq böyümədədir (doldurmaq):** `reserve`-siz dinamik massiv 2–5 dəfə yavaşdır, çünki dolanda yeni buffer ayırıb elementləri köçürür (Sual 1). `reserve` ilə isə adi massiv qədər sürətlidir, hətta bir az sürətli.
+- **Qiymətə görə nə alırıq?** Array-in ölçüsünü **əvvəlcədən bilmək** lazımdır. Testdə ortaya əlavə üçün massivə əvvəlcədən `n + ops` yer ayrılıb, əks halda əlavə mümkün olmazdı. Dynamic array isə ölçünü bilmədən işləyir, bunun qiyməti böyümə zamanı amortized O(1) əlavə işdir.
+
+**Cavab:** Array ilə Dynamic Array arasında əlavə, silmə və axtarış sürəti **eynidir**, çünki ikisinin də yaddaş quruluşu eynidir. Dynamic array-in yeganə əlavə xərci böyümədir, o da `reserve` ilə aradan qalxır. Ölçü məlum deyilsə, dynamic array seçilir. Ölçü tam məlumdursa və heç vaxt dəyişmirsə, adi array kifayətdir.
+
+---
+
 ## Yekun
 
 | # | Sual | Qısa cavab |
@@ -255,6 +297,7 @@ Tam ölçmə bu kompüterdə ~65 saniyə çəkir. `--quick` rejimi n ≤ 10⁵ i
 | 5 | ortaya `insert`/`erase`? | **O(n)**: 10⁷-də bir əməliyyat ~4 ms; sonda O(1) |
 | 6 | cache-in təsiri? | eyni O(n) traversal-da **10–600×** fərq |
 | 7 | `std::vector`-a yaxınlıq? | **Praktik olaraq eyni**: 7/8 əməliyyatda ±5%, `emplace_back(string)` ~10% yavaş |
+| 8 | Array və Dynamic Array? | əlavə/silmə/axtarış **eyni**; fərq yalnız böyümədə (`reserve`-siz 2–5×) |
 
 ## Müdafiədə gələ biləcək suallar
 

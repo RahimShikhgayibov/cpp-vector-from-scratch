@@ -1,0 +1,144 @@
+structure,op,n,ns_per_op
+array,fill,1000,0.7
+dynamic array,fill,1000,1.6
+dynamic array + reserve,fill,1000,0.5
+array,insert_middle,1000,37
+dynamic array,insert_middle,1000,38
+array,erase_middle,1000,21
+dynamic array,erase_middle,1000,21
+array,linear_search,1000,205.5
+array,binary_search,1000,43.18
+dynamic array,linear_search,1000,224.5
+dynamic array,binary_search,1000,40.31
+array,fill,2000,1.45
+dynamic array,fill,2000,1.8
+dynamic array + reserve,fill,2000,0.85
+array,insert_middle,2000,70
+dynamic array,insert_middle,2000,87.5
+array,erase_middle,2000,37.5
+dynamic array,erase_middle,2000,38
+array,linear_search,2000,310
+array,binary_search,2000,42.86
+dynamic array,linear_search,2000,205.5
+dynamic array,binary_search,2000,43.05
+array,fill,5000,2.28
+dynamic array,fill,5000,4.66
+dynamic array + reserve,fill,5000,2.06
+array,insert_middle,5000,166
+dynamic array,insert_middle,5000,167
+array,erase_middle,5000,126.5
+dynamic array,erase_middle,5000,127
+array,linear_search,5000,503
+array,binary_search,5000,46.94
+dynamic array,linear_search,5000,500
+dynamic array,binary_search,5000,47.31
+array,fill,10000,2.05
+dynamic array,fill,10000,4.73
+dynamic array + reserve,fill,10000,1.93
+array,insert_middle,10000,334.5
+dynamic array,insert_middle,10000,335
+array,erase_middle,10000,250.5
+dynamic array,erase_middle,10000,250.5
+array,linear_search,10000,1006
+array,binary_search,10000,52.4
+dynamic array,linear_search,10000,1038
+dynamic array,binary_search,10000,53.36
+array,fill,20000,0.535
+dynamic array,fill,20000,4.615
+dynamic array + reserve,fill,20000,0.325
+array,insert_middle,20000,784
+dynamic array,insert_middle,20000,687
+array,erase_middle,20000,529
+dynamic array,erase_middle,20000,522.5
+array,linear_search,20000,2025
+array,binary_search,20000,58.16
+dynamic array,linear_search,20000,2032.5
+dynamic array,binary_search,20000,58.54
+array,fill,50000,0.53
+dynamic array,fill,50000,3.888
+dynamic array + reserve,fill,50000,0.658
+array,insert_middle,50000,1892
+dynamic array,insert_middle,50000,2030.5
+array,erase_middle,50000,1423.5
+dynamic array,erase_middle,50000,1475
+array,linear_search,50000,5244
+array,binary_search,50000,88.19
+dynamic array,linear_search,50000,6259
+dynamic array,binary_search,50000,69.96
+array,fill,100000,0.778
+dynamic array,fill,100000,3.766
+dynamic array + reserve,fill,100000,0.607
+array,insert_middle,100000,4287
+dynamic array,insert_middle,100000,3776
+array,erase_middle,100000,3012
+dynamic array,erase_middle,100000,3194
+array,linear_search,100000,15711
+array,binary_search,100000,95.07
+dynamic array,linear_search,100000,12065.5
+dynamic array,binary_search,100000,70.81
+array,fill,200000,0.7285
+dynamic array,fill,200000,3.104
+dynamic array + reserve,fill,200000,0.501
+array,insert_middle,200000,7488
+dynamic array,insert_middle,200000,7452.5
+array,erase_middle,200000,5967.5
+dynamic array,erase_middle,200000,5778
+array,linear_search,200000,20019.5
+array,binary_search,200000,85.04
+dynamic array,linear_search,200000,19916
+dynamic array,binary_search,200000,81.95
+array,fill,500000,1.052
+dynamic array,fill,500000,1.8602
+dynamic array + reserve,fill,500000,0.9416
+array,insert_middle,500000,19824.5
+dynamic array,insert_middle,500000,19512
+array,erase_middle,500000,16108.5
+dynamic array,erase_middle,500000,15976.5
+array,linear_search,500000,50049
+array,binary_search,500000,98.69
+dynamic array,linear_search,500000,50064.5
+dynamic array,binary_search,500000,99.21
+array,fill,1000000,0.9929
+dynamic array,fill,1000000,1.5923
+dynamic array + reserve,fill,1000000,0.845
+array,insert_middle,1000000,38770
+dynamic array,insert_middle,1000000,39025
+array,erase_middle,1000000,155060
+dynamic array,erase_middle,1000000,156510
+array,linear_search,1000000,80265
+array,binary_search,1000000,113.88
+dynamic array,linear_search,1000000,81565
+dynamic array,binary_search,1000000,112.98
+array,fill,2000000,0.9416
+dynamic array,fill,2000000,1.51305
+dynamic array + reserve,fill,2000000,0.7863
+array,insert_middle,2000000,79255
+dynamic array,insert_middle,2000000,77330
+array,erase_middle,2000000,318800
+dynamic array,erase_middle,2000000,313215
+array,linear_search,2000000,165365
+array,binary_search,2000000,123.76
+dynamic array,linear_search,2000000,167530
+dynamic array,binary_search,2000000,125.28
+array,fill,5000000,0.93522
+dynamic array,fill,5000000,2.17182
+dynamic array + reserve,fill,5000000,0.8318
+array,insert_middle,5000000,203400
+dynamic array,insert_middle,5000000,198230
+array,erase_middle,5000000,772265
+dynamic array,erase_middle,5000000,778600
+array,linear_search,5000000,458050
+array,binary_search,5000000,148.25
+dynamic array,linear_search,5000000,454870
+dynamic array,binary_search,5000000,147.66
+array,fill,10000000,0.99872
+dynamic array,fill,10000000,2.32162
+dynamic array + reserve,fill,10000000,0.8928
+array,insert_middle,10000000,1.7356e+06
+dynamic array,insert_middle,10000000,1.55458e+06
+array,erase_middle,10000000,1.63596e+06
+dynamic array,erase_middle,10000000,2.05526e+06
+array,linear_search,10000000,1.19198e+06
+array,binary_search,10000000,215.15
+dynamic array,linear_search,10000000,1.03276e+06
+dynamic array,binary_search,10000000,195.43

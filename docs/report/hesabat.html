@@ -69,7 +69,8 @@ mövzularını tələb edir: obyektin ömrünün əl ilə idarəsi, xam yaddaş 
 exception safety, template-lər. Layihənin məqsədi bu mövzuları işlək kodla öyrənmək və nəticəni test və ölçmə ilə sübut etməkdir.</p>
 <p><b>Tədqiqat sualları.</b> (1) <code>push_back</code> həqiqətən amortized O(1)-dirmi? (2) 2× və 1.5× böyümə faktorundan hansı
 yaxşıdır? (3) <code>reserve</code> nə qədər qazandırır? (4) Copy ilə move arasındakı fərq nədir, <code>noexcept</code> unudulanda nə baş verir?
-(5) Ortaya <code>insert</code>/<code>erase</code> praktikada nə qədər bahadır? (6) Cache-in təsiri nə qədərdir? (7) Nəticə <code>std::vector</code>-a nə qədər yaxındır?</p>
+(5) Ortaya <code>insert</code>/<code>erase</code> praktikada nə qədər bahadır? (6) Cache-in təsiri nə qədərdir? (7) Nəticə <code>std::vector</code>-a nə qədər yaxındır?
+(8) Adi Array ilə Dynamic Array əlavə, silmə və axtarışda necə fərqlənir?</p>
 <p><b>Əhatə.</b> <code>std::vector</code>-un bütün üzv və sərbəst funksiyaları. <b>Bilərəkdən kənarda qalanlar:</b> custom allocator
 dəstəyi və <code>vector&lt;bool&gt;</code> ixtisaslaşması.</p>
 
@@ -231,6 +232,14 @@ unudulanda böyümə zamanı elementlər kopyalanır və vektor <b>~2 dəfə yav
 (<code>string</code>) ardıcıl olaraq ~10% yavaşdır (1.05–1.27). Ehtimal olunan səbəb böyümə yolunun daha az optimallaşdırılmasıdır
 (profiler ilə araşdırılmayıb). İlk cəhddə tək n = 10⁶ nöqtəsi götürülmüş və bəzi əməliyyatlar 1.3× yavaş görünmüşdü. Bu,
 metodun çox nöqtənin həndəsi ortasına dəyişdirilməsinə səbəb oldu.</p>
+
+<figure><img src="../benchmark/q8.png" alt="q8" style="max-width: 92%"><figcaption>Şəkil 7. Array (sabit tutum) və Dynamic Array (<code>mystl::vector</code>): doldurmaq, ortaya əlavə, ortadan silmə, xətti və binar axtarış.</figcaption></figure>
+<p><b>8. Array və Dynamic Array.</b> Sabit tutumlu adi massiv (<code>FixedArray</code>) ilə dinamik massiv beş əməliyyatda müqayisə
+olunub. Ortaya əlavə, silmə, xətti və binar axtarışın qiyməti <b>eynidir</b> (xətlər üst-üstə düşür), çünki hər ikisində
+elementlər ardıcıl yaddaşdadır. Mürəkkəbliklər nəzəriyyəyə uyğundur: əlavə/silmə/xətti axtarış O(n), binar axtarış
+O(log n) (n = 10³ → 10⁷: 43 → 215 ns). Yeganə fərq doldurmaqdadır: <code>reserve</code>-siz dinamik massiv böyümə zamanı köçürmə
+etdiyi üçün 2–5 dəfə yavaşdır, <code>reserve</code> ilə isə adi massiv qədər sürətlidir. Bunun müqabilində adi massivin ölçüsünü
+əvvəlcədən bilmək lazımdır.</p>
 
 <h2>7. Trade-off-lar və məhdudiyyətlər</h2>
 <ul>

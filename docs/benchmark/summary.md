@@ -78,3 +78,23 @@ Nisbət = mystl vaxtı / std vaxtı (1.00 = eyni). Hər əməliyyat üçün n �
 | insert (orta) | 1.00 | 0.95 | 1.04 | 10 |
 | erase (orta) | 0.99 | 0.93 | 1.02 | 10 |
 | traversal | 1.03 | 0.71 | 1.32 | 10 |
+
+## Sual 8: Array və Dynamic Array
+
+| n | əməliyyat | array | dynamic array | dynamic array + reserve |
+|---|---|---|---|---|
+| 1,000 | fill | 0.70 ns | 1.60 ns | 0.50 ns |
+| 1,000 | insert_middle | 37.00 ns | 38.00 ns | – |
+| 1,000 | erase_middle | 21.00 ns | 21.00 ns | – |
+| 1,000 | linear_search | 205.50 ns | 224.50 ns | – |
+| 1,000 | binary_search | 43.18 ns | 40.31 ns | – |
+| 100,000 | fill | 0.78 ns | 3.77 ns | 0.61 ns |
+| 100,000 | insert_middle | 4,287.00 ns | 3,776.00 ns | – |
+| 100,000 | erase_middle | 3,012.00 ns | 3,194.00 ns | – |
+| 100,000 | linear_search | 15,711.00 ns | 12,065.50 ns | – |
+| 100,000 | binary_search | 95.07 ns | 70.81 ns | – |
+| 10,000,000 | fill | 1.00 ns | 2.32 ns | 0.89 ns |
+| 10,000,000 | insert_middle | 1,735,600.00 ns | 1,554,580.00 ns | – |
+| 10,000,000 | erase_middle | 1,635,960.00 ns | 2,055,260.00 ns | – |
+| 10,000,000 | linear_search | 1,191,980.00 ns | 1,032,760.00 ns | – |
+| 10,000,000 | binary_search | 215.15 ns | 195.43 ns | – |

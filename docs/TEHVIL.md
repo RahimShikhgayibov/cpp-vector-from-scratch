@@ -10,7 +10,7 @@
 | 6 | Benchmark nəticələri və qrafiklər | [`docs/izah/14-d-benchmark.md`](izah/14-d-benchmark.md), [`docs/benchmark/`](benchmark) (`q1.png` … `q7.png`, `summary.md`) |
 | 7 | Test input-ları (benchmark parametrləri və seed-lər) | aşağıda; xam nəticələr: [`docs/benchmark/data/`](benchmark/data) |
 | 8 | README və işə salma təlimatı | [`README.md`](../README.md) |
-| 9 | Təqdimat (PPTX və ya PDF) | [`docs/report/teqdimat.pdf`](report/teqdimat.pdf), 14 slayd |
+| 9 | Təqdimat (PPTX və ya PDF) | [`docs/report/teqdimat.pdf`](report/teqdimat.pdf), 15 slayd |
 | 10 | İstinadlar | hesabatın sonunda |
 
 PDF-lər HTML mənbələrindən yaradılır:
@@ -51,6 +51,7 @@ powershell -ExecutionPolicy Bypass -File scripts/make_pdf.ps1 docs/report/hesaba
 | Sual 4 sətri | 40 simvol (SSO-ya sığmır) |
 | Sual 5 | `reserve(n + ops)` edilmiş `int` vektoru; ops = 200 (n < 10⁶), 20 (n ≥ 10⁶) |
 | Sual 6 | qarışıq list üçün `std::mt19937` seed 42 |
+| Sual 8 | Array: `FixedArray` (sabit tutum); axtarış açarları `std::mt19937` seed 7; xətti axtarış 200 açar (n ≥ 10⁶: 20), binar axtarış 10 000 açar |
 | Avadanlıq | AMD Ryzen 7 PRO 5850U, 31 GB RAM, Windows 11 Pro 23H2, g++ 16.2.0 |
 | İşə salma | `build/release/benchmarks.exe --repeats=9`, sonra `python scripts/plot_benchmarks.py` |
 

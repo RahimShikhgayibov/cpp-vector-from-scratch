@@ -63,7 +63,7 @@
       </ul>
     </div>
     <div>
-      <p><b>7 tədqiqat sualı</b></p>
+      <p><b>8 tədqiqat sualı</b></p>
       <ol style="margin:0; padding-left:7mm">
         <li><code>push_back</code> amortized O(1)-dirmi?</li>
         <li>Böyümə: 2× yoxsa 1.5×?</li>
@@ -72,6 +72,7 @@
         <li>Ortaya <code>insert</code>/<code>erase</code></li>
         <li>Cache: vector və linked list</li>
         <li><code>std::vector</code>-a nə qədər yaxın?</li>
+        <li>Array və Dynamic Array</li>
       </ol>
     </div>
   </div>
@@ -277,6 +278,22 @@ mystl::vector (xam yaddaş):
   <div class="footer"><span>mystl::vector</span><span>12</span></div>
 </section>
 
+<!-- 12b -->
+<section class="slide">
+  <h2>Array və Dynamic Array</h2>
+  <div class="cols-60">
+    <img class="graph" src="../benchmark/q8.png" alt="q8">
+    <ul style="font-size:12pt">
+      <li><b>Array:</b> tutum bir dəfə verilir, böyümür</li>
+      <li><b>Dynamic Array:</b> <code>mystl::vector</code>, özü böyüyür</li>
+      <li>Əlavə, silmə, axtarış: <b>eyni qiymət</b> (ardıcıl yaddaş)</li>
+      <li>O(n) əlavə/silmə/xətti axtarış, O(log n) binar axtarış</li>
+      <li>Fərq yalnız doldurmaqda: <code>reserve</code>-siz <span class="bad">2–5×</span>, <code>reserve</code> ilə eyni</li>
+    </ul>
+  </div>
+  <div class="footer"><span>mystl::vector</span><span>13</span></div>
+</section>
+
 <!-- 13 -->
 <section class="slide">
   <h2>Testlər</h2>
@@ -292,7 +309,7 @@ mystl::vector (xam yaddaş):
     <li><b>Mutation testing:</b> bilərəkdən salınan 6 səhvin hamısını testlər tutdu</li>
     <li><b>Positive control:</b> ASan bilərəkdən səhv proqramlarda leak və double free-ni tutur</li>
   </ul>
-  <div class="footer"><span>mystl::vector</span><span>13</span></div>
+  <div class="footer"><span>mystl::vector</span><span>14</span></div>
 </section>
 
 <!-- 14 -->
@@ -319,7 +336,7 @@ mystl::vector (xam yaddaş):
     </div>
   </div>
   <p style="text-align:center; margin-top:8mm; font-size:18pt; color: var(--accent)"><b>Suallar?</b></p>
-  <div class="footer"><span>github.com/RahimShikhgayibov/cpp-vector-from-scratch</span><span>14</span></div>
+  <div class="footer"><span>github.com/RahimShikhgayibov/cpp-vector-from-scratch</span><span>15</span></div>
 </section>
 
 </body>

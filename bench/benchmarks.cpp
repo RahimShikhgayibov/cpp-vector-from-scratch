@@ -401,6 +401,134 @@ void q6() {
     }
 }
 
+// ===========================================================================
+// Sual 8: Array və Dynamic Array — əlavə, silmə, axtarış
+// ===========================================================================
+
+// "Array": tutumu yaradılanda BİR DƏFƏ verilir və heç vaxt böyümür (C massivi kimi).
+// Dolu massivə əlavə etmək mümkün deyil: əvvəlcədən lazım olan ölçünü bilmək lazımdır.
+class FixedArray {
+public:
+    explicit FixedArray(std::size_t capacity) : data_(new int[capacity]), capacity_(capacity) {}
+    ~FixedArray() { delete[] data_; }
+    FixedArray(const FixedArray&) = delete;
+    FixedArray& operator=(const FixedArray&) = delete;
+    FixedArray(FixedArray&& o) noexcept
+        : data_(std::exchange(o.data_, nullptr)), size_(std::exchange(o.size_, 0)),
+          capacity_(std::exchange(o.capacity_, 0)) {}
+
+    bool push_back(int value) {
+        if (size_ == capacity_) return false;          // yer yoxdur: böyüyə bilmir
+        data_[size_++] = value;
+        return true;
+    }
+    bool insert(std::size_t pos, int value) {
+        if (size_ == capacity_) return false;
+        std::move_backward(data_ + pos, data_ + size_, data_ + size_ + 1);  // sağa sürüşdür
+        data_[pos] = value;
+        ++size_;
+        return true;
+    }
+    void erase(std::size_t pos) {
+        std::move(data_ + pos + 1, data_ + size_, data_ + pos);             // sola sürüşdür
+        --size_;
+    }
+    const int* begin() const { return data_; }
+    const int* end() const { return data_ + size_; }
+    std::size_t size() const { return size_; }
+
+private:
+    int* data_;
+    std::size_t size_ = 0;
+    std::size_t capacity_;
+};
+
+// Axtarılacaq açarlar: [0, n) aralığında, sabit seed ilə təsadüfi.
+std::vector<int> random_keys(std::size_t n, std::size_t count) {
+    std::mt19937 rng(7);
+    std::uniform_int_distribution<int> dist(0, static_cast<int>(n) - 1);
+    std::vector<int> keys(count);
+    for (auto& k : keys) k = dist(rng);
+    return keys;
+}
+
+template <typename Container>
+void search_rows(const char* name, const Container& c, std::size_t n, Csv& csv) {
+    // Xətti axtarış O(n): n böyüdükcə az sayda axtarış kifayətdir.
+    const auto linear_keys = random_keys(n, n >= 1'000'000 ? 20 : 200);
+    const double linear = median_ns([&] {
+        for (int key : linear_keys) g_sink += static_cast<std::uint64_t>(std::find(c.begin(), c.end(), key) - c.begin());
+    });
+    csv.row(name, "linear_search", n, linear / static_cast<double>(linear_keys.size()));
+
+    // Binar axtarış O(log n): elementlər sıralıdır (0, 1, 2, ...).
+    const auto binary_keys = random_keys(n, 10'000);
+    const double binary = median_ns([&] {
+        for (int key : binary_keys) g_sink += std::binary_search(c.begin(), c.end(), key);
+    });
+    csv.row(name, "binary_search", n, binary / static_cast<double>(binary_keys.size()));
+}
+
+void q8() {
+    std::cout << "Q8: array vs dynamic array (insert, erase, search)\n";
+    Csv csv("q8_array_vs_dynamic.csv", "structure,op,n,ns_per_op");
+    for (std::size_t n : log_sizes(1'000, 10'000'000)) {
+        const auto d = static_cast<double>(n);
+        const std::size_t ops = n >= 1'000'000 ? 20 : 200;
+
+        // 1. Doldurmaq: n elementi sona əlavə etmək
+        csv.row("array", "fill", n, median_ns([&] {
+            FixedArray a(n);
+            for (std::size_t i = 0; i < n; ++i) a.push_back(static_cast<int>(i));
+            g_sink += a.size();
+        }) / d);
+        csv.row("dynamic array", "fill", n, median_ns([&] { push_n<Mine>(n); }) / d);
+        csv.row("dynamic array + reserve", "fill", n, median_ns([&] { push_n_reserved<Mine>(n); }) / d);
+
+        // 2–3. Ortaya əlavə və ortadan silmə (hazırlıq ölçülmür)
+        auto make_array = [n, ops] {
+            FixedArray a(n + ops);                     // massivə əvvəlcədən yer saxlamaq LAZIMDIR
+            for (std::size_t i = 0; i < n; ++i) a.push_back(static_cast<int>(i));
+            return a;
+        };
+        auto make_dynamic = [n] {
+            Mine v;                                    // vektor özü böyüyür
+            for (std::size_t i = 0; i < n; ++i) v.push_back(static_cast<int>(i));
+            return v;
+        };
+        csv.row("array", "insert_middle", n, median_ns_with_setup(make_array, [ops](FixedArray& a) {
+            for (std::size_t k = 0; k < ops; ++k) a.insert(a.size() / 2, static_cast<int>(k));
+            g_sink += a.size();
+        }) / static_cast<double>(ops));
+        csv.row("dynamic array", "insert_middle", n, median_ns_with_setup(make_dynamic, [ops](Mine& v) {
+            for (std::size_t k = 0; k < ops; ++k) {
+                v.insert(v.begin() + static_cast<std::ptrdiff_t>(v.size() / 2), static_cast<int>(k));
+            }
+            g_sink += v.size();
+        }) / static_cast<double>(ops));
+        csv.row("array", "erase_middle", n, median_ns_with_setup(make_array, [ops](FixedArray& a) {
+            for (std::size_t k = 0; k < ops; ++k) a.erase(a.size() / 2);
+            g_sink += a.size();
+        }) / static_cast<double>(ops));
+        csv.row("dynamic array", "erase_middle", n, median_ns_with_setup(make_dynamic, [ops](Mine& v) {
+            for (std::size_t k = 0; k < ops; ++k) {
+                v.erase(v.begin() + static_cast<std::ptrdiff_t>(v.size() / 2));
+            }
+            g_sink += v.size();
+        }) / static_cast<double>(ops));
+
+        // 4–5. Axtarış
+        {
+            const FixedArray a = make_array();
+            search_rows("array", a, n, csv);
+        }
+        {
+            const Mine v = make_dynamic();
+            search_rows("dynamic array", v, n, csv);
+        }
+    }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -425,6 +553,7 @@ int main(int argc, char** argv) {
     if (wanted("q6")) q6();
     // Sual 7 (std::vector-a nə qədər yaxın) ayrıca ölçülmür: 1–6-cı sualların
     // hər birində std::vector müqayisə xətti kimi ölçülür.
+    if (wanted("q8")) q8();
 
     std::cout << "sink = " << g_sink << '\n';   // nəticələr "istifadə olunur"
 }

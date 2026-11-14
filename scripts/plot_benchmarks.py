@@ -338,6 +338,56 @@ def q7(data, out, summary):
     summary.append("")
 
 
+def q8(data, out, summary):
+    """Array (sabit tutum) və Dynamic Array (mystl::vector): əlavə, silmə, axtarış."""
+    path = data / "q8_array_vs_dynamic.csv"
+    if not path.exists():
+        return
+    rows = read(data, "q8_array_vs_dynamic.csv")
+    styles = {
+        "array": (OTHER[1], "s-"),
+        "dynamic array": (MINE, "o--"),
+        "dynamic array + reserve": (OTHER[0], "^:"),
+    }
+    panels = [
+        ("fill", "Doldurmaq (sona n element)", "ns / element", False),
+        ("insert_middle", "Ortaya əlavə", "ns / əməliyyat", True),
+        ("erase_middle", "Ortadan silmə", "ns / əməliyyat", True),
+        ("linear_search", "Xətti axtarış: O(n)", "ns / axtarış", True),
+        ("binary_search", "Binar axtarış (sıralı): O(log n)", "ns / axtarış", False),
+    ]
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    for ax, (op, title, ylabel, logy) in zip(axes.flat, panels):
+        for name, (color, fmt) in styles.items():
+            xs, ys = series(rows, "n", "ns_per_op", structure=name, op=op)
+            if xs:
+                ax.plot(xs, ys, fmt, color=color, label=name)
+        if not logy:
+            ax.set_ylim(bottom=0)
+        style(ax, title, "n", ylabel, logy=logy)
+    axes.flat[-1].axis("off")
+    axes.flat[-1].text(0.02, 0.5,
+                       "Array: tutum yaradılanda verilir, böyümür.\n"
+                       "Dynamic array: mystl::vector, özü böyüyür.\n\n"
+                       "Elementlər hər ikisində ardıcıl yaddaşdadır:\n"
+                       "əlavə/silmə/axtarış qiyməti eynidir.\n"
+                       "Fərq yalnız böyümədədir (doldurmaq).",
+                       fontsize=11, va="center")
+    save(fig, out, "q8.png")
+
+    summary.append("## Sual 8: Array və Dynamic Array\n")
+    summary.append("| n | əməliyyat | array | dynamic array | dynamic array + reserve |")
+    summary.append("|---|---|---|---|---|")
+    for n in (1_000, 100_000, 10_000_000):
+        for op, _, _, _ in panels:
+            cells = []
+            for name in styles:
+                v = value_at(rows, "ns_per_op", n, structure=name, op=op)
+                cells.append(f"{v:,.2f} ns" if v is not None else "–")
+            summary.append(f"| {n:,} | {op} | " + " | ".join(cells) + " |")
+    summary.append("")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="docs/benchmark/data")
@@ -347,7 +397,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     summary = ["# Benchmark nəticələri (avtomatik yaradılıb: scripts/plot_benchmarks.py)\n"]
-    for step in (q1, q2, q3, q4, q5, q6, q7):
+    for step in (q1, q2, q3, q4, q5, q6, q7, q8):
         step(data, out, summary)
     (out / "summary.md").write_text("\n".join(summary), encoding="utf-8")
     print("  ->", out / "summary.md")
