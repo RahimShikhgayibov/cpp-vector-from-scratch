@@ -6,7 +6,7 @@
 # A temporary Edge profile is used so the normal Edge profile is not touched.
 # (ASCII only: Windows PowerShell 5.1 reads BOM-less scripts in the ANSI code page.)
 
-param([Parameter(Mandatory = $true)][string[]]$Html)
+param([Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][string[]]$Html)
 
 $edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
 if (-not (Test-Path $edge)) { $edge = "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe" }
